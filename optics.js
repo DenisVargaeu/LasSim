@@ -1014,11 +1014,11 @@
   }
 
   function buildOptpObject(projectName, components, settings = {}, projectId = null) {
-    const appVersion = (global.OptiLab && global.OptiLab.VERSION) || '1.0.0';
+    const appVersion = (global.LasSim && global.LasSim.VERSION) || '1.0.0';
     return {
       format: 'OPTP',
       version: 1,
-      application: 'OptiLab',
+      application: 'LasSim',
       appVersion,
       exportedAt: new Date().toISOString(),
       project: {
@@ -1049,14 +1049,14 @@
     if (!parsed || typeof parsed !== 'object') {
       throw new Error('Invalid .optp file: root must be a JSON object.');
     }
-    if (parsed.format !== 'OPTP' || parsed.application !== 'OptiLab') {
-      throw new Error('Unrecognized file format: expected format "OPTP" for application "OptiLab".');
+    if (parsed.format !== 'OPTP' || (parsed.application !== 'LasSim' && parsed.application !== 'OptiLab')) {
+      throw new Error('Unrecognized file format: expected format "OPTP" for application "LasSim".');
     }
     if (typeof parsed.version !== 'number' || !Number.isInteger(parsed.version)) {
       throw new Error('Missing or invalid OPTP format version.');
     }
     if (parsed.version > 1 || parsed.version < 1) {
-      throw new Error(`Unsupported OPTP version v${parsed.version}. This build of OptiLab supports OPTP v1.`);
+      throw new Error(`Unsupported OPTP version v${parsed.version}. This build of LasSim supports OPTP v1.`);
     }
     if (!parsed.project || typeof parsed.project !== 'object' || !Array.isArray(parsed.project.components)) {
       throw new Error('Malformed OPTP project structure: missing "project.components" array.');
@@ -1823,8 +1823,8 @@
     }
   }
 
-  global.OptiLab = global.OptiLab || {};
-  Object.assign(global.OptiLab, {
+  global.LasSim = global.LasSim || {};
+  Object.assign(global.LasSim, {
     CFG,
     uid,
     clamp,

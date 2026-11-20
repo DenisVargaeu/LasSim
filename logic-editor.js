@@ -1,5 +1,5 @@
 /**
- * OptiLab — Node-Based Logic Editor UI & Renderer (logic-editor.js)
+ * LasSim — Node-Based Logic Editor UI & Renderer (logic-editor.js)
  *
  * Professional visual node editor inspired by Unreal Engine Blueprints
  * and Blender Geometry Nodes.
@@ -27,7 +27,7 @@
     LogicNode,
     LogicWire,
     LogicEngine,
-  } = global.OptiLab;
+  } = global.LasSim;
 
   class LogicEditor {
     constructor(app, containerEl) {
@@ -1310,7 +1310,7 @@
           </div>
         `;
       } else if (node.type === 'utility-print-debug') {
-        const curMsg = node.customValues['value'] ?? 'Hello OptiLab';
+        const curMsg = node.customValues['value'] ?? 'Hello LasSim';
         html += `
           <div class="prop-field">
             <div class="prop-row">
@@ -1868,7 +1868,7 @@
   }
 
   // ── Global Export ──
-  global.OptiLab = global.OptiLab || {};
-  global.OptiLab.LogicEditor = LogicEditor;
+  global.LasSim = global.LasSim || {};
+  global.LasSim.LogicEditor = LogicEditor;
 
 })(typeof window !== 'undefined' ? window : globalThis);

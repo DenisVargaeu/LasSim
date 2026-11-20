@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **OptiLab** are documented in this file.
+All notable changes to **LasSim** are documented in this file.
 Versioning follows [Semantic Versioning (SemVer)](https://semver.org/): `MAJOR.MINOR.PATCH`.
 
 To bump the version consistently across `version.json`, `version.js`, `desktop/package.json`, and `CHANGELOG.md`:

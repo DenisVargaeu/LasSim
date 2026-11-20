@@ -37,11 +37,11 @@
     I18N,
     VERSION,
     VERSION_INFO,
-  } = global.OptiLab;
+  } = global.LasSim;
 
   const APP_VERSION = VERSION || '1.0.0';
   const APP_VERSION_INFO = VERSION_INFO || {
-    name: 'OptiLab',
+    name: 'LasSim',
     version: APP_VERSION,
     channel: 'stable',
     releaseDate: '',
@@ -71,7 +71,7 @@
   // ── IndexedDB Project Storage Engine ──
   class ProjectStorage {
     constructor() {
-      this.dbName = 'OptiLabDB';
+      this.dbName = 'LasSimDB';
       this.dbVersion = 1;
       this.db = null;
       this._memProjects = new Map();
@@ -2872,7 +2872,7 @@
   }
 
   // ── Main Application Controller ──
-  class OptiLabApp {
+  class LasSimApp {
     constructor() {
       this.canvas = document.getElementById('canvas');
       this.renderer = new Renderer(this.canvas);
@@ -2907,7 +2907,7 @@
 
       this.theme = 'dark';
       try {
-        const storedTheme = localStorage.getItem('optilab-theme');
+        const storedTheme = localStorage.getItem('lassim-theme');
         if (storedTheme === 'light' || storedTheme === 'dark') {
           this.theme = storedTheme;
         }
@@ -2915,7 +2915,7 @@
 
       this.lang = 'en';
       try {
-        const storedLang = localStorage.getItem('optilab-lang');
+        const storedLang = localStorage.getItem('lassim-lang');
         if (storedLang === 'en' || storedLang === 'sk') {
           this.lang = storedLang;
         }
@@ -2933,7 +2933,7 @@
     setLanguage(lang, silent = false) {
       this.lang = i18n.setLang(lang);
       try {
-        localStorage.setItem('optilab-lang', this.lang);
+        localStorage.setItem('lassim-lang', this.lang);
       } catch (_e) {}
 
       i18n.applyStaticDOM();
@@ -2981,7 +2981,7 @@
         sun.style.display = this.theme === 'dark' ? 'block' : 'none';
       }
       try {
-        localStorage.setItem('optilab-theme', this.theme);
+        localStorage.setItem('lassim-theme', this.theme);
       } catch (_e) {}
       this.requestUpdate();
     }
@@ -3215,7 +3215,7 @@
       const lang = i18n.getLang();
       const info = APP_VERSION_INFO;
       if (titleEl) {
-        titleEl.textContent = `${i18n.phrase('About OptiLab')} v${info.version}`;
+        titleEl.textContent = `${i18n.phrase('About LasSim')} v${info.version}`;
       }
 
       const releasesHtml = (info.changelog || [])
@@ -3354,12 +3354,12 @@
         this.projectName
           .toLowerCase()
           .replace(/[^a-z0-9-_]+/g, '-')
-          .replace(/^-|-$/g, '') || 'optilab-project';
+          .replace(/^-|-$/g, '') || 'lassim-project';
       const fileName = `${safeSlug}.optp`;
 
-      // Use native OS Save dialog when running inside OptiLab Electron Desktop
-      if (typeof window !== 'undefined' && window.optiLabDesktop && typeof window.optiLabDesktop.saveOptpFile === 'function') {
-        window.optiLabDesktop.saveOptpFile(fileName, jsonStr).then((res) => {
+      // Use native OS Save dialog when running inside LasSim Electron Desktop
+      if (typeof window !== 'undefined' && window.lasSimDesktop && typeof window.lasSimDesktop.saveOptpFile === 'function') {
+        window.lasSimDesktop.saveOptpFile(fileName, jsonStr).then((res) => {
           if (res && !res.canceled) {
             this.showToast(i18n.t('toastExported', { file: res.fileName || fileName }), 'success');
           }
@@ -3593,10 +3593,10 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             const safeSlug =
-              String(rec.name || 'optilab-project')
+              String(rec.name || 'lassim-project')
                 .toLowerCase()
                 .replace(/[^a-z0-9-_]+/g, '-')
-                .replace(/^-|-$/g, '') || 'optilab-project';
+                .replace(/^-|-$/g, '') || 'lassim-project';
             a.href = url;
             a.download = `${safeSlug}.optp`;
             document.body.appendChild(a);
@@ -4618,8 +4618,8 @@
       });
 
       // Optional Electron Desktop IPC integration (no-op in browser)
-      if (typeof window !== 'undefined' && window.optiLabDesktop && window.optiLabDesktop.isDesktop) {
-        window.optiLabDesktop.onMenuAction(({ action, payload }) => {
+      if (typeof window !== 'undefined' && window.lasSimDesktop && window.lasSimDesktop.isDesktop) {
+        window.lasSimDesktop.onMenuAction(({ action, payload }) => {
           if (action === 'new-project') this.createNewProject();
           else if (action === 'open-projects') this.openProjectsModal();
           else if (action === 'save-project') this.saveCurrentProject(false);
@@ -4640,7 +4640,7 @@
           }
         });
 
-        window.optiLabDesktop.onOpenOptpContent(({ content }) => {
+        window.lasSimDesktop.onOpenOptpContent(({ content }) => {
           if (content) this.importOptpString(content, false);
         });
       }
@@ -5118,13 +5118,13 @@
     }
   }
 
-  global.OptiLab.ProjectStorage = ProjectStorage;
-  global.OptiLab.HistoryManager = HistoryManager;
-  global.OptiLab.OptiLabApp = OptiLabApp;
+  global.LasSim.ProjectStorage = ProjectStorage;
+  global.LasSim.HistoryManager = HistoryManager;
+  global.LasSim.LasSimApp = LasSimApp;
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('DOMContentLoaded', () => {
-      window.optiLab = new OptiLabApp();
+      window.lasSim = new LasSimApp();
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

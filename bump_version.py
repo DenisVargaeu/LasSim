@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OptiLab Semantic Versioning Helper (bump_version.py)
+LasSim Semantic Versioning Helper (bump_version.py)
 
 Usage:
   python3 bump_version.py show
@@ -43,9 +43,9 @@ def render_version_js(data):
         "  'use strict';\n\n"
         "  // Auto-synced with version.json & desktop/package.json via bump_version.py\n"
         f"  const VERSION_INFO = {indented.lstrip()};\n\n"
-        "  global.OptiLab = global.OptiLab || {};\n"
-        "  global.OptiLab.VERSION = VERSION_INFO.version;\n"
-        "  global.OptiLab.VERSION_INFO = VERSION_INFO;\n"
+        "  global.LasSim = global.LasSim || {};\n"
+        "  global.LasSim.VERSION = VERSION_INFO.version;\n"
+        "  global.LasSim.VERSION_INFO = VERSION_INFO;\n"
         "})(typeof window !== 'undefined' ? window : globalThis);\n"
     )
 
@@ -68,7 +68,7 @@ def update_changelog(new_version, release_date, notes_en):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OptiLab SemVer version manager")
+    parser = argparse.ArgumentParser(description="LasSim SemVer version manager")
     parser.add_argument("target", help="show | patch | minor | major | X.Y.Z")
     parser.add_argument("--note", action="append", default=[], help="English changelog note (repeatable)")
     parser.add_argument("--note-sk", action="append", default=[], help="Slovak changelog note (repeatable)")
@@ -117,7 +117,7 @@ def main():
         DESKTOP_PKG.write_text(json.dumps(pkg, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     update_changelog(new_version, today, notes_en)
-    print(f"✓ Updated OptiLab version: {cur_major}.{cur_minor}.{cur_patch} -> {new_version} ({today})")
+    print(f"✓ Updated LasSim version: {cur_major}.{cur_minor}.{cur_patch} -> {new_version} ({today})")
 
 
 if __name__ == "__main__":

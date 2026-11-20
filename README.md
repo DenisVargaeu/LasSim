@@ -1,6 +1,6 @@
-# OptiLab — 2D Geometric Optics Simulation Playground
+# LasSim — 2D Geometric Optics Simulation Playground
 
-**OptiLab** is a zero-dependency, real-time **2D geometric optics simulator** built with vanilla HTML, CSS, JavaScript, and HTML5 Canvas — available both as a **static web app** and an **Electron desktop application**.
+**LasSim** is a zero-dependency, real-time **2D geometric optics simulator** built with vanilla HTML, CSS, JavaScript, and HTML5 Canvas — available both as a **static web app** and an **Electron desktop application**.
 
 Design optical benches with lasers, LEDs, point sources, lenses, curved mirrors, prisms, glass blocks, ball lenses, diffraction gratings, linear polarizers, slits, beam blockers, beam splitters, spectral filters, and live photodiode detectors — complete with real-time ray tracing, built-in physics guides, IndexedDB storage, `.optp` project files, and **EN / SK** localization.
 
@@ -17,7 +17,7 @@ Design optical benches with lasers, LEDs, point sources, lenses, curved mirrors,
 - **19 Optical Components** — every component includes an interactive **`(i)` Info Guide** explaining what it does, its governing physics law, adjustable controls, and a bench experiment tip.
 - **10 Interactive Presets** — launch directly from the toolbar dropdown or via `app.html?preset=<id>` (Converging Lens, Diverging Beam, Keplerian Telescope, Galilean Expander, Beam Splitter & Mirrors, Prism Dispersion, Diffraction Grating Spectrum, Malus's Law 3 Polarizers, Ball Lens Caustics, Point Source & Double Slit).
 - **Live Photodiode Telemetry** — real-time incident ray count, integrated optical flux %, peak intensity, mean wavelength (nm), and photon energy (eV).
-- **Project Persistence & `.optp` Format** — automatic local IndexedDB storage (`OptiLabDB`), Projects Manager modal, and portable `.optp` v1 JSON export/import with drag-and-drop.
+- **Project Persistence & `.optp` Format** — automatic local IndexedDB storage (`LasSimDB`), Projects Manager modal, and portable `.optp` v1 JSON export/import with drag-and-drop.
 - **Bilingual UI (EN / SK) & Themes** — instant **English / Slovak** language switcher and **Notion Warm Dark / Warm Paper Light** themes synced between the landing page and simulator via `localStorage`.
 - **Desktop App (`desktop/`)** — Electron wrapper with native menus, `.optp` file association, and OS Save/Open dialogs for Linux, Windows, and macOS.
 
@@ -55,7 +55,7 @@ Then open:
 ```bash
 cd desktop
 npm install
-npm start            # launch OptiLab Desktop
+npm start            # launch LasSim Desktop
 npm run dev          # launch with DevTools open
 ```
 
@@ -77,7 +77,7 @@ fyzika/
 ├── index.html          # Public landing page (live engine hero + screenshots + info)
 ├── landing.css         # Landing page styles (Warm Dark & Warm Light themes)
 ├── landing.js          # Live ray-traced hero preview, screenshots & EN/SK switcher
-├── app.html            # Main OptiLab 2D optical bench simulator
+├── app.html            # Main LasSim 2D optical bench simulator
 ├── styles.css          # Simulator UI layout & Notion Dark/Light themes
 ├── optics.js           # Physics engine, 19 component classes, RayTracer & .optp v1
 ├── renderer.js         # HiDPI HTML5 Canvas 2D renderer + automatic dark-mode palette map
@@ -110,7 +110,7 @@ Run syntax checks and a headless Node physics/serialization smoke test:
 
 ```bash
 node --check optics.js renderer.js i18n.js app.js landing.js desktop/main.js desktop/preload.js
-node -e "require('./optics.js'); const { createComponent, RayTracer, buildOptpObject, validateAndParseOptp } = globalThis.OptiLab; const comps = [createComponent('laser', -200, 0), createComponent('convex-lens', 0, 0), createComponent('optical-detector', 200, 0)]; const rt = new RayTracer(); rt.trace(comps); console.log('segments:', rt.segments.length, 'hits:', comps[2].hitCount); const parsed = validateAndParseOptp(JSON.stringify(buildOptpObject('Test', comps))); console.log('roundtrip:', parsed.components.length);"
+node -e "require('./optics.js'); const { createComponent, RayTracer, buildOptpObject, validateAndParseOptp } = globalThis.LasSim; const comps = [createComponent('laser', -200, 0), createComponent('convex-lens', 0, 0), createComponent('optical-detector', 200, 0)]; const rt = new RayTracer(); rt.trace(comps); console.log('segments:', rt.segments.length, 'hits:', comps[2].hitCount); const parsed = validateAndParseOptp(JSON.stringify(buildOptpObject('Test', comps))); console.log('roundtrip:', parsed.components.length);"
 ```
 
 Deploy static web files via FTP (credentials read from environment variables `FTP_HOST`, `FTP_USER`, `FTP_PASSWORD`):

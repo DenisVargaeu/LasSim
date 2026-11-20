@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
 
-  const { createComponent, RayTracer, Renderer } = global.OptiLab;
+  const { createComponent, RayTracer, Renderer } = global.LasSim;
 
   // ── Optical Scene Builders (shared by Hero Preview & Live Screenshot Cards) ──
   function buildScene(sceneName, pointerOffset = 0) {
@@ -136,9 +136,9 @@
       this.heroPointer = 0;
 
       try {
-        const savedTheme = localStorage.getItem('optilab-theme');
+        const savedTheme = localStorage.getItem('lassim-theme');
         if (savedTheme === 'light' || savedTheme === 'dark') this.theme = savedTheme;
-        const savedLang = localStorage.getItem('optilab-lang');
+        const savedLang = localStorage.getItem('lassim-lang');
         if (savedLang === 'en' || savedLang === 'sk') this.lang = savedLang;
       } catch (_e) {}
 
@@ -150,8 +150,8 @@
     }
 
     _syncVersionBadges() {
-      const ver = (global.OptiLab && global.OptiLab.VERSION) || '1.0.0';
-      document.querySelectorAll('[data-optilab-version]').forEach((el) => {
+      const ver = (global.LasSim && global.LasSim.VERSION) || '1.0.0';
+      document.querySelectorAll('[data-lassim-version]').forEach((el) => {
         el.textContent = `v${ver}`;
       });
     }
@@ -170,7 +170,7 @@
       }
 
       try {
-        localStorage.setItem('optilab-theme', this.theme);
+        localStorage.setItem('lassim-theme', this.theme);
       } catch (_e) {}
 
       this.renderAllCanvases();
@@ -181,11 +181,11 @@
       document.documentElement.setAttribute('lang', this.lang);
       document.title =
         this.lang === 'sk'
-          ? 'OptiLab — Interaktívny 2D simulátor geometrickej optiky'
-          : 'OptiLab — Interactive 2D Geometric Optics Simulator';
+          ? 'LasSim — Interaktívny 2D simulátor geometrickej optiky'
+          : 'LasSim — Interactive 2D Geometric Optics Simulator';
 
       try {
-        localStorage.setItem('optilab-lang', this.lang);
+        localStorage.setItem('lassim-lang', this.lang);
       } catch (_e) {}
 
       document.querySelectorAll('[data-lp-en]').forEach((el) => {
@@ -267,7 +267,7 @@
 
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('DOMContentLoaded', () => {
-      window.optiLabLanding = new LandingController();
+      window.lasSimLanding = new LandingController();
     });
   }
 })(typeof window !== 'undefined' ? window : globalThis);

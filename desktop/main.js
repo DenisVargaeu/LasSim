@@ -33,7 +33,7 @@ function sendOptpFileToRenderer(filePath) {
   if (!filePath || !mainWindow || mainWindow.isDestroyed()) return;
   try {
     const content = fs.readFileSync(filePath, 'utf8');
-    mainWindow.webContents.send('optilab:open-optp-content', {
+    mainWindow.webContents.send('lassim:open-optp-content', {
       filePath,
       fileName: path.basename(filePath),
       content,
@@ -45,16 +45,16 @@ function sendOptpFileToRenderer(filePath) {
 
 function sendMenuAction(action, payload = null) {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send('optilab:menu-action', { action, payload });
+  mainWindow.webContents.send('lassim:menu-action', { action, payload });
 }
 
 async function openOptpWithDialog() {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const result = await dialog.showOpenDialog(mainWindow, {
-    title: 'Open OptiLab Project (.optp)',
+    title: 'Open LasSim Project (.optp)',
     properties: ['openFile'],
     filters: [
-      { name: 'OptiLab Project', extensions: ['optp'] },
+      { name: 'LasSim Project', extensions: ['optp'] },
       { name: 'JSON Files', extensions: ['json'] },
       { name: 'All Files', extensions: ['*'] },
     ],
@@ -183,7 +183,7 @@ function buildAppMenu() {
         },
         { type: 'separator' },
         {
-          label: `About OptiLab (v${app.getVersion()})`,
+          label: `About LasSim (v${app.getVersion()})`,
           click: () => sendMenuAction('open-version'),
         },
       ],
@@ -206,7 +206,7 @@ function createWindow() {
     minWidth: 960,
     minHeight: 640,
     backgroundColor: '#191816',
-    title: 'OptiLab — 2D Optical Simulation Playground',
+    title: 'LasSim — 2D Optical Simulation Playground',
     icon: getIconPath(),
     show: false,
     webPreferences: {
@@ -219,7 +219,7 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    if (process.env.OPTILAB_DEV === '1') {
+    if (process.env.LASSIM_DEV === '1') {
       mainWindow.webContents.openDevTools({ mode: 'detach' });
     }
   });
@@ -250,13 +250,13 @@ function createWindow() {
 }
 
 // Native Save dialog IPC for exporting .optp directly to disk
-ipcMain.handle('optilab:save-optp', async (_event, { defaultFileName, content }) => {
+ipcMain.handle('lassim:save-optp', async (_event, { defaultFileName, content }) => {
   if (!mainWindow || mainWindow.isDestroyed()) return { canceled: true };
   const result = await dialog.showSaveDialog(mainWindow, {
-    title: 'Export OptiLab Project (.optp)',
+    title: 'Export LasSim Project (.optp)',
     defaultPath: defaultFileName || 'optical-experiment.optp',
     filters: [
-      { name: 'OptiLab Project', extensions: ['optp'] },
+      { name: 'LasSim Project', extensions: ['optp'] },
       { name: 'All Files', extensions: ['*'] },
     ],
   });
@@ -267,7 +267,7 @@ ipcMain.handle('optilab:save-optp', async (_event, { defaultFileName, content })
   return { canceled: false, filePath: result.filePath, fileName: path.basename(result.filePath) };
 });
 
-ipcMain.handle('optilab:open-optp-dialog', async () => {
+ipcMain.handle('lassim:open-optp-dialog', async () => {
   await openOptpWithDialog();
   return { ok: true };
 });

@@ -1,8 +1,8 @@
 {
-  "name": "optilab-desktop",
-  "productName": "OptiLab",
+  "name": "lassim-desktop",
+  "productName": "LasSim",
   "version": "1.0.0",
-  "description": "OptiLab — Interactive 2D Geometric Optics Simulation Desktop App",
+  "description": "LasSim — Interactive 2D Geometric Optics Simulation Desktop App",
   "main": "main.js",
   "homepage": "https://denisvarga.eu/fyz",
   "author": {
@@ -12,7 +12,7 @@
   "private": true,
   "scripts": {
     "start": "electron .",
-    "dev": "OPTILAB_DEV=1 electron .",
+    "dev": "LASSIM_DEV=1 electron .",
     "build": "electron-builder",
     "build:linux": "electron-builder --linux",
     "build:win": "electron-builder --win",
@@ -23,8 +23,8 @@
     "electron-builder": "^26.18.0"
   },
   "build": {
-    "appId": "sk.optilab.desktop",
-    "productName": "OptiLab",
+    "appId": "sk.lassim.desktop",
+    "productName": "LasSim",
     "directories": {
       "output": "dist"
     },
@@ -57,8 +57,8 @@
     "fileAssociations": [
       {
         "ext": "optp",
-        "name": "OptiLab Optical Project",
-        "description": "OptiLab 2D Optical Simulation Project",
+        "name": "LasSim Optical Project",
+        "description": "LasSim 2D Optical Simulation Project",
         "mimeType": "application/json",
         "role": "Editor"
       }

@@ -3,7 +3,7 @@
 
   // Auto-synced with version.json & desktop/package.json via bump_version.py
   const VERSION_INFO = {
-    name: 'OptiLab',
+    name: 'LasSim',
     version: '1.0.0',
     major: 1,
     minor: 0,
@@ -37,7 +37,7 @@
     ],
   };
 
-  global.OptiLab = global.OptiLab || {};
-  global.OptiLab.VERSION = VERSION_INFO.version;
-  global.OptiLab.VERSION_INFO = VERSION_INFO;
+  global.LasSim = global.LasSim || {};
+  global.LasSim.VERSION = VERSION_INFO.version;
+  global.LasSim.VERSION_INFO = VERSION_INFO;
 })(typeof window !== 'undefined' ? window : globalThis);

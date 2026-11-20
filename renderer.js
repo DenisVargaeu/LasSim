@@ -22,7 +22,7 @@
     DiffractionGrating,
     Polarizer,
     createComponent,
-  } = global.OptiLab;
+  } = global.LasSim;
 
   class Renderer {
     constructor(canvas) {
@@ -1280,5 +1280,5 @@
     }
   }
 
-  global.OptiLab.Renderer = Renderer;
+  global.LasSim.Renderer = Renderer;
 })(typeof window !== 'undefined' ? window : globalThis);

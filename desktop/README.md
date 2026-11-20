@@ -1,6 +1,6 @@
-# OptiLab Desktop (Electron)
+# LasSim Desktop (Electron)
 
-Desktopová aplikácia **OptiLab** zabalená cez Electron. Načítava priamo webové súbory z koreňa projektu (`../app.html`, `../optics.js`, `../renderer.js`, `../i18n.js`, `../app.js`) bez duplikácie kódu a pridáva natívne menu, asociáciu súborov `.optp` aj natívne dialógy Otvoriť / Uložiť.
+Desktopová aplikácia **LasSim** zabalená cez Electron. Načítava priamo webové súbory z koreňa projektu (`../app.html`, `../optics.js`, `../renderer.js`, `../i18n.js`, `../app.js`) bez duplikácie kódu a pridáva natívne menu, asociáciu súborov `.optp` aj natívne dialógy Otvoriť / Uložiť.
 
 ## Spustenie (Development)
 

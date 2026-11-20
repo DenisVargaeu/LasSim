@@ -1,5 +1,5 @@
 /**
- * OptiLab — Node-Based Visual Logic System (logic.js)
+ * LasSim — Node-Based Visual Logic System (logic.js)
  *
  * Professional visual node-based programming engine inspired by
  * Unreal Engine Blueprints and Blender Geometry Nodes.
@@ -840,7 +840,7 @@
       description: 'Logs message or value to the Logic Console with timestamp.',
       inputs: [
         { id: 'exec', name: '', type: SOCKET_TYPES.EXEC },
-        { id: 'value', name: 'Value', type: SOCKET_TYPES.ANY, defaultValue: 'Hello OptiLab' },
+        { id: 'value', name: 'Value', type: SOCKET_TYPES.ANY, defaultValue: 'Hello LasSim' },
       ],
       outputs: [
         { id: 'exec', name: '', type: SOCKET_TYPES.EXEC },
@@ -996,7 +996,7 @@
   // ── Logic Engine ──
   class LogicEngine {
     constructor(app = null) {
-      this.app = app; // OptiLabApp reference
+      this.app = app; // LasSimApp reference
       this.nodes = new Map(); // id -> LogicNode
       this.wires = new Map(); // id -> LogicWire
       this.variables = new Map(); // name -> value
@@ -1591,14 +1591,14 @@
     }
   }
 
-  // ── Export to Global OptiLab Namespace ──
-  global.OptiLab = global.OptiLab || {};
-  global.OptiLab.SOCKET_TYPES = SOCKET_TYPES;
-  global.OptiLab.SOCKET_COLORS = SOCKET_COLORS;
-  global.OptiLab.CATEGORIES = CATEGORIES;
-  global.OptiLab.NODE_DEFS = NODE_DEFS;
-  global.OptiLab.LogicNode = LogicNode;
-  global.OptiLab.LogicWire = LogicWire;
-  global.OptiLab.LogicEngine = LogicEngine;
+  // ── Export to Global LasSim Namespace ──
+  global.LasSim = global.LasSim || {};
+  global.LasSim.SOCKET_TYPES = SOCKET_TYPES;
+  global.LasSim.SOCKET_COLORS = SOCKET_COLORS;
+  global.LasSim.CATEGORIES = CATEGORIES;
+  global.LasSim.NODE_DEFS = NODE_DEFS;
+  global.LasSim.LogicNode = LogicNode;
+  global.LasSim.LogicWire = LogicWire;
+  global.LasSim.LogicEngine = LogicEngine;
 
 })(typeof window !== 'undefined' ? window : globalThis);

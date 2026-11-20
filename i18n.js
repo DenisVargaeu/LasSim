@@ -4,7 +4,7 @@
   // ── Exact UI Phrase Map (English -> Slovak) ──
   const SK_PHRASES = {
     // Document & Toolbar
-    'OptiLab — 2D Optical Simulation Playground': 'OptiLab — 2D optický simulátor',
+    'LasSim — 2D Optical Simulation Playground': 'LasSim — 2D optický simulátor',
     'Projects': 'Projekty',
     'Saved': 'Uložené',
     'Unsaved': 'Neuložené',
@@ -113,7 +113,7 @@
     'Import .optp': 'Importovať .optp',
     'Have a external .optp experiment file?': 'Máš externý súbor experimentu .optp?',
     'Drag & drop a .optp file here or click to import into your browser vault.': 'Pretiahni sem súbor .optp alebo klikni pre import do prehliadača.',
-    'Projects auto-save periodically to local IndexedDB (OptiLabDB)': 'Projekty sa automaticky ukladajú lokálne do IndexedDB (OptiLabDB)',
+    'Projects auto-save periodically to local IndexedDB (LasSimDB)': 'Projekty sa automaticky ukladajú lokálne do IndexedDB (LasSimDB)',
     'Open': 'Otvoriť',
     'Active': 'Aktívny',
     'ACTIVE SESSION': 'AKTÍVNA RELÁCIA',
@@ -166,7 +166,7 @@
     'Key Controls': 'Kľúčové nastavenia',
     'Try on the bench:': 'Vyskúšaj na lavici:',
     'VERSION & CHANGELOG': 'VERZIA A HISTÓRIA ZMIEN',
-    'About OptiLab': 'O aplikácii OptiLab',
+    'About LasSim': 'O aplikácii LasSim',
     'Current Version': 'Aktuálna verzia',
     'Release Date': 'Dátum vydania',
     'Release Channel': 'Kanál vydania',
@@ -371,7 +371,7 @@
   // ── Keyed Templates & Dynamic Messages ──
   const MESSAGES = {
     en: {
-      pageTitle: 'OptiLab — 2D Optical Simulation Playground',
+      pageTitle: 'LasSim — 2D Optical Simulation Playground',
       searchProjectsPlaceholder: 'Filter saved optical experiments by name…',
       defaultProjectName: 'My Optical Experiment',
       untitledProject: 'Untitled Project',
@@ -422,7 +422,7 @@
       infoBtnTitle: 'What does {name} do?',
     },
     sk: {
-      pageTitle: 'OptiLab — 2D optický simulátor',
+      pageTitle: 'LasSim — 2D optický simulátor',
       searchProjectsPlaceholder: 'Filtrovať uložené optické experimenty podľa názvu…',
       defaultProjectName: 'Môj optický experiment',
       untitledProject: 'Nepomenovaný projekt',
@@ -1122,13 +1122,13 @@
           : 'Drag &amp; drop a <code>.optp</code> file here or click to import into your browser vault.';
     }
 
-    // Modal footer IndexedDB hint (contains <code>OptiLabDB</code>)
+    // Modal footer IndexedDB hint (contains <code>LasSimDB</code>)
     const modalHintSpan = document.querySelector('#modal-projects .modal-footer-hint span:last-child');
     if (modalHintSpan) {
       modalHintSpan.innerHTML =
         _lang === 'sk'
-          ? 'Projekty sa pravidelne automaticky ukladajú do lokálnej IndexedDB (<code>OptiLabDB</code>)'
-          : 'Projects auto-save periodically to local IndexedDB (<code>OptiLabDB</code>)';
+          ? 'Projekty sa pravidelne automaticky ukladajú do lokálnej IndexedDB (<code>LasSimDB</code>)'
+          : 'Projects auto-save periodically to local IndexedDB (<code>LasSimDB</code>)';
     }
 
     // Update sidebar i-button tooltips
@@ -1146,8 +1146,8 @@
     });
   }
 
-  global.OptiLab = global.OptiLab || {};
-  global.OptiLab.I18N = {
+  global.LasSim = global.LasSim || {};
+  global.LasSim.I18N = {
     getLang,
     setLang,
     t,
