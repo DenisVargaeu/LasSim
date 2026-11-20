@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OptiLab — 2D Optical Simulation Playground</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header / Toolbar -->
+    <header id="toolbar">
+      <div class="brand">
+        <a href="index.html" class="brand-home-link" title="OptiLab Home">
+          <div class="brand-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+            </svg>
+          </div>
+          <span class="brand-title">OptiLab</span>
+        </a>
+
+        <div class="project-bar">
+          <button class="tb-btn proj-trigger-btn" id="btn-projects" title="Open Saved Projects Manager (Ctrl+N for New Project)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Projects</span>
+            <span class="proj-count-pill" id="toolbar-proj-count" title="Saved projects in IndexedDB">1</span>
+          </button>
+
+          <div class="project-bar-sep"></div>
+
+          <div class="project-name-wrap">
+            <input
+              type="text"
+              id="project-name-input"
+              class="project-name-input"
+              value="My Optical Experiment"
+              maxlength="64"
+              title="Click to rename current project"
+              aria-label="Project Name"
+            />
+            <svg class="project-edit-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+            </svg>
+          </div>
+
+          <span class="save-status saved" id="save-status-badge" title="Local IndexedDB save status">
+            <span class="save-dot"></span>
+            <span id="save-status-text">Saved</span>
+          </span>
+        </div>
+      </div>
+
+      <div class="toolbar-group">
+        <div class="file-action-group">
+          <button class="tb-btn" id="btn-save" title="Save Project to Browser Storage (Ctrl+S)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+              <polyline points="17 21 17 13 7 13 7 21"></polyline>
+              <polyline points="7 3 7 8 15 8"></polyline>
+            </svg>
+            Save
+          </button>
+
+          <button class="tb-btn" id="btn-import" title="Import .optp Project File (Ctrl+O)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import
+          </button>
+          <input type="file" id="optp-file-input" accept=".optp,application/json" style="display:none" />
+
+          <button class="tb-btn" id="btn-export" title="Export Project as .optp File (Ctrl+Shift+S)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export <span class="btn-format-tag">.optp</span>
+          </button>
+        </div>
+
+        <div class="divider-v"></div>
+
+        <button class="tb-btn icon-only" id="btn-undo" title="Undo (Ctrl+Z)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 7v6h6"></path>
+            <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+          </svg>
+        </button>
+        <button class="tb-btn icon-only" id="btn-redo" title="Redo (Ctrl+Y)" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 7v6h-6"></path>
+            <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7"></path>
+          </svg>
+        </button>
+
+        <div class="divider-v"></div>
+
+        <select id="preset-select" class="tb-select" title="Load an optical bench preset">
+          <option value="">Presets…</option>
+          <option value="converging">Converging Lens + Detector</option>
+          <option value="diverging">Diverging Beam</option>
+          <option value="keplerian">Keplerian Telescope / Expander</option>
+          <option value="galilean">Galilean Beam Expander</option>
+          <option value="interferometer">Beam Splitter &amp; Mirrors</option>
+          <option value="prism-dispersion">Prism Chromatic Dispersion</option>
+          <option value="diffraction-grating">Diffraction Grating Spectrum</option>
+          <option value="polarizer-malus">Malus's Law (3 Polarizers)</option>
+          <option value="ball-lens">Ball Lens Dispersion &amp; Caustics</option>
+          <option value="pinhole-slit">Point Source &amp; Double Slit</option>
+        </select>
+
+        <button class="tb-btn active" id="btn-snap" title="Snap components to 20px grid">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          Snap
+        </button>
+
+        <button class="tb-btn active" id="btn-foci" title="Toggle focal point markers (F / F')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <line x1="3" y1="12" x2="7" y2="12"></line>
+            <line x1="17" y1="12" x2="21" y2="12"></line>
+          </svg>
+          Foci
+        </button>
+
+        <button class="tb-btn" id="btn-reset-view" title="Center and reset zoom to 100% (0)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+          </svg>
+          Center
+        </button>
+
+        <button class="tb-btn danger" id="btn-clear" title="Remove all components from bench">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          Clear
+        </button>
+
+        <div class="divider-v"></div>
+
+        <button class="tb-btn icon-only" id="btn-shortcuts" title="Keyboard Shortcuts Reference (?)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
+
+        <button class="tb-btn icon-only" id="btn-theme" title="Toggle Notion Dark / Light Mode">
+          <svg class="theme-icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="theme-icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+
+        <div class="lang-switcher" id="lang-switcher" role="group" aria-label="Language">
+          <button type="button" class="lang-btn active" data-lang="en" title="Switch language to English">EN</button>
+          <button type="button" class="lang-btn" data-lang="sk" title="Prepnúť jazyk na slovenčinu">SK</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <div id="main">
+      <!-- Left Component Library Sidebar -->
+      <aside id="sidebar">
+        <div class="panel-section-title">Light Sources</div>
+        <div class="component-list">
+          <div class="component-card" data-type="laser">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="3" y="10" width="18" height="12" rx="2" style="fill:var(--icon-body,#ffffff);stroke:var(--icon-frame,#8b949e)" stroke-width="1.3"/>
+                <rect x="18" y="12" width="3" height="8" fill="#f85149"/>
+                <line x1="21" y1="13" x2="30" y2="13" stroke="#f85149" stroke-width="1.4"/>
+                <line x1="21" y1="16" x2="30" y2="16" stroke="#f85149" stroke-width="1.8"/>
+                <line x1="21" y1="19" x2="30" y2="19" stroke="#f85149" stroke-width="1.4"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Laser Source</span>
+              <span class="cc-desc">Collimated monochromatic</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Laser Source do?" aria-label="Laser Source info">i</button>
+          </div>
+
+          <div class="component-card" data-type="white-led">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="4" y="10" width="14" height="12" rx="2" style="fill:var(--icon-body,#ffffff);stroke:var(--icon-frame,#8b949e)" stroke-width="1.3"/>
+                <path d="M18 11 A5 5 0 0 1 18 21 Z" fill="#c9a46a"/>
+                <line x1="22" y1="12" x2="30" y2="9" stroke="#c9a46a" stroke-width="1.4"/>
+                <line x1="23" y1="16" x2="30" y2="16" stroke="#c9a46a" stroke-width="1.8"/>
+                <line x1="22" y1="20" x2="30" y2="23" stroke="#c9a46a" stroke-width="1.4"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">White LED</span>
+              <span class="cc-desc">Broadband white light</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does White LED do?" aria-label="White LED info">i</button>
+          </div>
+
+          <div class="component-card" data-type="rgb-led">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="3" y="9" width="15" height="14" rx="2" style="fill:var(--icon-body,#ffffff);stroke:var(--icon-frame,#8b949e)" stroke-width="1.3"/>
+                <rect x="15" y="11" width="3" height="3" fill="#ff3b30"/>
+                <rect x="15" y="14.5" width="3" height="3" fill="#3fb950"/>
+                <rect x="15" y="18" width="3" height="3" fill="#388bfd"/>
+                <line x1="19" y1="12.5" x2="30" y2="10" stroke="#ff3b30" stroke-width="1.5"/>
+                <line x1="19" y1="16" x2="30" y2="16" stroke="#3fb950" stroke-width="1.6"/>
+                <line x1="19" y1="19.5" x2="30" y2="22" stroke="#388bfd" stroke-width="1.5"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">RGB LED</span>
+              <span class="cc-desc">Trichromatic R·G·B emitter</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does RGB LED do?" aria-label="RGB LED info">i</button>
+          </div>
+
+          <div class="component-card" data-type="point-source">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="5" fill="#e8c882" style="stroke:var(--icon-frame,#8b949e)" stroke-width="1.3"/>
+                <line x1="16" y1="3" x2="16" y2="8" stroke="#c9a46a" stroke-width="1.5"/>
+                <line x1="16" y1="24" x2="16" y2="29" stroke="#c9a46a" stroke-width="1.5"/>
+                <line x1="3" y1="16" x2="8" y2="16" stroke="#c9a46a" stroke-width="1.5"/>
+                <line x1="24" y1="16" x2="29" y2="16" stroke="#c9a46a" stroke-width="1.5"/>
+                <line x1="6.8" y1="6.8" x2="10.4" y2="10.4" stroke="#c9a46a" stroke-width="1.4"/>
+                <line x1="21.6" y1="21.6" x2="25.2" y2="25.2" stroke="#c9a46a" stroke-width="1.4"/>
+                <line x1="25.2" y1="6.8" x2="21.6" y2="10.4" stroke="#c9a46a" stroke-width="1.4"/>
+                <line x1="10.4" y1="21.6" x2="6.8" y2="25.2" stroke="#c9a46a" stroke-width="1.4"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Point Source</span>
+              <span class="cc-desc">360° radial / fan emitter</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Point Source do?" aria-label="Point Source info">i</button>
+          </div>
+        </div>
+
+        <div class="panel-section-title">Optical Lenses</div>
+        <div class="component-list">
+          <div class="component-card" data-type="convex-lens">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <path d="M16 3 Q23 16 16 29 Q9 16 16 3 Z" fill="rgba(90,134,168,0.16)" stroke="#5a86a8" stroke-width="1.4"/>
+                <line x1="4" y1="16" x2="28" y2="16" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Convex Lens</span>
+              <span class="cc-desc">Converging (+f)</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Convex Lens do?" aria-label="Convex Lens info">i</button>
+          </div>
+
+          <div class="component-card" data-type="concave-lens">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <path d="M11 4 Q15 16 11 28 L21 28 Q17 16 21 4 Z" fill="rgba(90,134,168,0.16)" stroke="#5a86a8" stroke-width="1.4"/>
+                <line x1="4" y1="16" x2="28" y2="16" stroke="#8b949e" stroke-width="0.8" stroke-dasharray="2 2"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Concave Lens</span>
+              <span class="cc-desc">Diverging (−f)</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Concave Lens do?" aria-label="Concave Lens info">i</button>
+          </div>
+
+          <div class="component-card" data-type="glass-sphere">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="16" r="11" fill="rgba(90,134,168,0.16)" stroke="#5a86a8" stroke-width="1.4"/>
+                <path d="M10 12 A7 7 0 0 1 15 8" stroke="#ffffff" stroke-width="1.5" opacity="0.55"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Ball Lens / Sphere</span>
+              <span class="cc-desc">Dielectric caustic sphere</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Ball Lens / Sphere do?" aria-label="Ball Lens info">i</button>
+          </div>
+        </div>
+
+        <div class="panel-section-title">Optical Components</div>
+        <div class="component-list">
+          <div class="component-card" data-type="plane-mirror">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <line x1="18" y1="4" x2="18" y2="28" style="stroke:var(--icon-ink,#6b655c)" stroke-width="2.2"/>
+                <line x1="18" y1="6" x2="12" y2="10" stroke="#8b949e" stroke-width="1"/>
+                <line x1="18" y1="12" x2="12" y2="16" stroke="#8b949e" stroke-width="1"/>
+                <line x1="18" y1="18" x2="12" y2="22" stroke="#8b949e" stroke-width="1"/>
+                <line x1="18" y1="24" x2="12" y2="28" stroke="#8b949e" stroke-width="1"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Plane Mirror</span>
+              <span class="cc-desc">Flat specular reflector</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Plane Mirror do?" aria-label="Plane Mirror info">i</button>
+          </div>
+
+          <div class="component-card" data-type="concave-mirror">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <path d="M13 4 Q22 16 13 28" style="stroke:var(--icon-ink,#6b655c)" stroke-width="2.2" fill="none"/>
+                <line x1="15" y1="6" x2="21" y2="4" stroke="#8b949e" stroke-width="1"/>
+                <line x1="17" y1="12" x2="23" y2="10" stroke="#8b949e" stroke-width="1"/>
+                <line x1="17" y1="19" x2="23" y2="17" stroke="#8b949e" stroke-width="1"/>
+                <line x1="15" y1="25" x2="21" y2="23" stroke="#8b949e" stroke-width="1"/>
+                <circle cx="9" cy="16" r="1.8" fill="#9f6b53"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Concave Mirror</span>
+              <span class="cc-desc">Converging curved reflector</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Concave Mirror do?" aria-label="Concave Mirror info">i</button>
+          </div>
+
+          <div class="component-card" data-type="convex-mirror">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <path d="M20 4 Q11 16 20 28" style="stroke:var(--icon-ink,#6b655c)" stroke-width="2.2" fill="none"/>
+                <line x1="18" y1="7" x2="24" y2="5" stroke="#8b949e" stroke-width="1"/>
+                <line x1="16" y1="13" x2="22" y2="11" stroke="#8b949e" stroke-width="1"/>
+                <line x1="16" y1="19" x2="22" y2="17" stroke="#8b949e" stroke-width="1"/>
+                <line x1="18" y1="25" x2="24" y2="23" stroke="#8b949e" stroke-width="1"/>
+                <circle cx="23" cy="16" r="1.8" fill="#d29922"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Convex Mirror</span>
+              <span class="cc-desc">Diverging curved reflector</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Convex Mirror do?" aria-label="Convex Mirror info">i</button>
+          </div>
+
+          <div class="component-card" data-type="optical-filter">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="13" y="5" width="6" height="22" rx="1.5" fill="rgba(68,131,97,0.22)" stroke="#448361" stroke-width="1.5"/>
+                <line x1="4" y1="16" x2="13" y2="16" stroke="#c9a46a" stroke-width="1.6"/>
+                <line x1="19" y1="16" x2="28" y2="16" stroke="#448361" stroke-width="1.8"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Optical Filter</span>
+              <span class="cc-desc">RGB/CMY wavelength filter</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Optical Filter do?" aria-label="Optical Filter info">i</button>
+          </div>
+
+          <div class="component-card" data-type="beam-splitter">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="6" y="6" width="20" height="20" fill="rgba(90,134,168,0.12)" stroke="#8b949e" stroke-width="1.2"/>
+                <line x1="6" y1="6" x2="26" y2="26" stroke="#5a86a8" stroke-width="1.8"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Beam Splitter</span>
+              <span class="cc-desc">Variable R/T splitter cube</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Beam Splitter do?" aria-label="Beam Splitter info">i</button>
+          </div>
+
+          <div class="component-card" data-type="prism">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <polygon points="16,4 27,26 5,26" fill="rgba(90,134,168,0.14)" stroke="#5a86a8" stroke-width="1.4"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Prism</span>
+              <span class="cc-desc">Refractive dispersive prism</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Prism do?" aria-label="Prism info">i</button>
+          </div>
+
+          <div class="component-card" data-type="glass-block">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="5" y="9" width="22" height="14" fill="rgba(90,134,168,0.12)" stroke="#5a86a8" stroke-width="1.4"/>
+                <line x1="9" y1="12" x2="7" y2="14" stroke="#5a86a8" stroke-width="1" opacity="0.6"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Glass Block</span>
+              <span class="cc-desc">Refractive dielectric slab</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Glass Block do?" aria-label="Glass Block info">i</button>
+          </div>
+
+          <div class="component-card" data-type="diffraction-grating">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="12" y="5" width="6" height="22" rx="1" fill="rgba(90,134,168,0.16)" stroke="#5a86a8" stroke-width="1.3"/>
+                <line x1="12" y1="9" x2="18" y2="9" style="stroke:var(--icon-ink,#6b655c)" stroke-width="1"/>
+                <line x1="12" y1="13" x2="18" y2="13" style="stroke:var(--icon-ink,#6b655c)" stroke-width="1"/>
+                <line x1="12" y1="17" x2="18" y2="17" style="stroke:var(--icon-ink,#6b655c)" stroke-width="1"/>
+                <line x1="12" y1="21" x2="18" y2="21" style="stroke:var(--icon-ink,#6b655c)" stroke-width="1"/>
+                <line x1="18" y1="16" x2="29" y2="8" stroke="#ff3b30" stroke-width="1.4"/>
+                <line x1="18" y1="16" x2="29" y2="16" stroke="#3fb950" stroke-width="1.5"/>
+                <line x1="18" y1="16" x2="29" y2="24" stroke="#388bfd" stroke-width="1.4"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Diffraction Grating</span>
+              <span class="cc-desc">Multi-order spectral grating</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Diffraction Grating do?" aria-label="Diffraction Grating info">i</button>
+          </div>
+
+          <div class="component-card" data-type="polarizer">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="13" y="5" width="6" height="22" rx="1.5" fill="rgba(124,98,168,0.24)" stroke="#8e7cc3" stroke-width="1.5"/>
+                <line x1="4" y1="16" x2="13" y2="16" stroke="#c9a46a" stroke-width="1.5"/>
+                <line x1="19" y1="16" x2="28" y2="16" stroke="#8e7cc3" stroke-width="1.5" stroke-dasharray="2.5 1.5"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Linear Polarizer</span>
+              <span class="cc-desc">Malus's law polarizing film</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Linear Polarizer do?" aria-label="Linear Polarizer info">i</button>
+          </div>
+
+          <div class="component-card" data-type="aperture-slit">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="13" y="3" width="6" height="7" rx="1" style="fill:var(--icon-ink,#6b655c)"/>
+                <rect x="13" y="13.5" width="6" height="5" rx="1" style="fill:var(--icon-ink,#6b655c)"/>
+                <rect x="13" y="22" width="6" height="7" rx="1" style="fill:var(--icon-ink,#6b655c)"/>
+                <line x1="4" y1="11.8" x2="28" y2="11.8" stroke="#c9a46a" stroke-width="1.2" opacity="0.7"/>
+                <line x1="4" y1="20.2" x2="28" y2="20.2" stroke="#c9a46a" stroke-width="1.2" opacity="0.7"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Aperture / Slit</span>
+              <span class="cc-desc">1 / 2 / 3-slit spatial mask</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Aperture / Slit do?" aria-label="Aperture / Slit info">i</button>
+          </div>
+
+          <div class="component-card" data-type="beam-blocker">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="13" y="5" width="7" height="22" rx="1.5" style="fill:var(--icon-ink,#6b655c)" opacity="0.85"/>
+                <line x1="4" y1="16" x2="13" y2="16" stroke="#f85149" stroke-width="1.6"/>
+                <line x1="15" y1="9" x2="18" y2="12" stroke="#fbf9f5" stroke-width="1" opacity="0.6"/>
+                <line x1="15" y1="15" x2="18" y2="18" stroke="#fbf9f5" stroke-width="1" opacity="0.6"/>
+                <line x1="15" y1="21" x2="18" y2="24" stroke="#fbf9f5" stroke-width="1" opacity="0.6"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Beam Blocker</span>
+              <span class="cc-desc">Matte optical beam dump</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Beam Blocker do?" aria-label="Beam Blocker info">i</button>
+          </div>
+
+          <div class="component-card" data-type="optical-detector">
+            <div class="cc-icon">
+              <svg viewBox="0 0 32 32" fill="none">
+                <rect x="11" y="5" width="12" height="22" rx="2" style="fill:var(--icon-body,#ffffff);stroke:var(--icon-frame,#8b949e)" stroke-width="1.3"/>
+                <line x1="11" y1="7" x2="11" y2="25" stroke="#448361" stroke-width="2.2"/>
+                <circle cx="17" cy="11" r="2.2" fill="#448361"/>
+              </svg>
+            </div>
+            <div class="cc-info">
+              <span class="cc-title">Optical Detector</span>
+              <span class="cc-desc">Live intensity &amp; flux sensor</span>
+            </div>
+            <button type="button" class="cc-info-btn" title="What does Optical Detector do?" aria-label="Optical Detector info">i</button>
+          </div>
+        </div>
+
+        <div class="sidebar-tips">
+          <div class="tip-row"><span>Place Component</span><kbd>Drag</kbd></div>
+          <div class="tip-row"><span>Snap 15° Angle</span><kbd>Shift + Rotate</kbd></div>
+          <div class="tip-row"><span>Step Rotate</span><kbd>R</kbd></div>
+          <div class="tip-row"><span>Delete Selected</span><kbd>Del</kbd></div>
+          <div class="tip-row"><span>Zoom Bench</span><kbd>Scroll</kbd></div>
+        </div>
+      </aside>
+
+      <!-- Interactive Optical Bench Canvas -->
+      <main id="workspace">
+        <canvas id="canvas"></canvas>
+
+        <!-- Floating Multi-Selection Action Toolbar -->
+        <div id="multi-toolbar" class="multi-toolbar" style="display:none">
+          <span class="multi-count-badge" id="multi-tb-count">2 selected</span>
+          <div class="divider-v"></div>
+          <button class="tb-btn" id="mtb-group" title="Group Selection (Ctrl+G)">Group</button>
+          <button class="tb-btn" id="mtb-ungroup" title="Ungroup Selection (Ctrl+Shift+G)">Ungroup</button>
+          <div class="divider-v"></div>
+          <button class="tb-btn" id="mtb-rot-ccw" title="Rotate Selection -15° (Shift+R)">−15°</button>
+          <button class="tb-btn" id="mtb-rot-cw" title="Rotate Selection +15° (R)">+15°</button>
+          <div class="divider-v"></div>
+          <button class="tb-btn" id="mtb-align-h" title="Align Horizontally (Same Y)">Align Y</button>
+          <button class="tb-btn" id="mtb-align-v" title="Align Vertically (Same X)">Align X</button>
+          <div class="divider-v"></div>
+          <button class="tb-btn" id="mtb-dup" title="Duplicate Selection (Ctrl+D)">Duplicate</button>
+          <button class="tb-btn danger" id="mtb-del" title="Delete Selection (Delete)">Delete</button>
+        </div>
+
+        <div id="hud-zoom">
+          <button class="hud-btn" id="btn-zoom-out" title="Zoom out (-)">−</button>
+          <span id="zoom-level" title="Click to reset zoom (0)">100%</span>
+          <button class="hud-btn" id="btn-zoom-in" title="Zoom in (+)">+</button>
+        </div>
+      </main>
+
+      <!-- Right Properties Inspector -->
+      <aside id="properties">
+        <div id="props-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="9"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div>Select an optical component on the bench to inspect or adjust its parameters.</div>
+        </div>
+        <div id="props-content"></div>
+      </aside>
+    </div>
+
+    <!-- Bottom Status Bar -->
+    <footer id="statusbar">
+      <div class="status-group">
+        <div class="status-item" id="status-coords">X: 0  Y: 0</div>
+        <div class="status-item">Components: <span id="status-count">0</span></div>
+        <div class="status-item">Selected: <span id="status-selected">0</span></div>
+        <div class="status-item">Ray Segments: <span id="status-rays">0</span></div>
+      </div>
+      <div class="status-group">
+        <div class="status-item">Storage: <span>IndexedDB · OPTP v1</span></div>
+        <div class="status-item">Engine: <span>2D Geometric Optics &amp; Snell Ray Tracer</span></div>
+      </div>
+    </footer>
+
+    <!-- Saved Projects Manager Modal (IndexedDB) -->
+    <div class="modal-backdrop" id="modal-projects" style="display:none">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <div class="modal-icon-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div>
+              <span class="prop-category-tag">INDEXEDDB PROJECT STORAGE · OPTP v1</span>
+              <h3>Optical Projects Manager</h3>
+            </div>
+          </div>
+          <div class="modal-header-actions">
+            <button class="tb-btn active" id="btn-modal-new-proj" title="Create New Project (Ctrl+N)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              New Project
+            </button>
+            <button class="tb-btn" id="btn-modal-import-proj" title="Import .optp File (Ctrl+O)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Import .optp
+            </button>
+            <button class="icon-action-btn" id="btn-close-projects" title="Close (Esc)">✕</button>
+          </div>
+        </div>
+
+        <div class="proj-modal-subbar">
+          <div class="proj-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input
+              type="text"
+              id="project-search-input"
+              class="proj-search-input"
+              placeholder="Filter saved optical experiments by name…"
+              autocomplete="off"
+            />
+          </div>
+          <div class="proj-stats-pills">
+            <span class="proj-stat-chip" id="modal-proj-total-chip">0 Projects</span>
+            <span class="proj-stat-chip" id="modal-proj-comps-chip">0 Components</span>
+          </div>
+        </div>
+
+        <div class="modal-body">
+          <div id="project-list-container" class="project-list-container"></div>
+
+          <div class="optp-dropzone" id="optp-dropzone" title="Click or drag and drop a .optp project file here">
+            <div class="optp-dropzone-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <polyline points="9 15 12 12 15 15"></polyline>
+              </svg>
+            </div>
+            <div class="optp-dropzone-text">
+              <strong>Have a external <code>.optp</code> experiment file?</strong>
+              <span>Drag &amp; drop a <code>.optp</code> file here or click to import into your browser vault.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <div class="modal-footer-hint">
+            <span class="save-dot" style="background:var(--success)"></span>
+            <span>Projects auto-save periodically to local IndexedDB (<code>OptiLabDB</code>)</span>
+          </div>
+          <div class="modal-footer-shortcuts">
+            <span><kbd>Ctrl+S</kbd> Save</span>
+            <span><kbd>Ctrl+Shift+S</kbd> Export</span>
+            <span><kbd>Ctrl+O</kbd> Import</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Reference Modal -->
+    <div class="modal-backdrop" id="modal-shortcuts" style="display:none">
+      <div class="modal-card modal-lg">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <div class="modal-icon-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
+                <path d="M6 8h.001M10 8h.001M14 8h.001M18 8h.001M8 12h.001M12 12h.001M16 12h.001M7 16h10"></path>
+              </svg>
+            </div>
+            <div>
+              <span class="prop-category-tag">QUICK REFERENCE</span>
+              <h3>Keyboard Shortcuts</h3>
+            </div>
+          </div>
+          <button class="icon-action-btn" id="btn-close-shortcuts" title="Close (Esc)">✕</button>
+        </div>
+        <div class="modal-body shortcuts-grid">
+          <div class="shortcut-group">
+            <h4>Project</h4>
+            <div class="sc-row"><span>Save Project</span><kbd>Ctrl + S</kbd></div>
+            <div class="sc-row"><span>Export .optp File</span><kbd>Ctrl + Shift + S</kbd></div>
+            <div class="sc-row"><span>Import / Open .optp</span><kbd>Ctrl + O</kbd></div>
+            <div class="sc-row"><span>New Project</span><kbd>Ctrl + N</kbd></div>
+          </div>
+
+          <div class="shortcut-group">
+            <h4>Selection</h4>
+            <div class="sc-row"><span>Toggle Object in Selection</span><kbd>Ctrl + Click</kbd></div>
+            <div class="sc-row"><span>Extend Selection</span><kbd>Shift + Click</kbd></div>
+            <div class="sc-row"><span>Marquee Box Selection</span><kbd>Drag Empty Space</kbd></div>
+            <div class="sc-row"><span>Select All Objects</span><kbd>Ctrl + A</kbd></div>
+            <div class="sc-row"><span>Clear Selection</span><kbd>Escape</kbd></div>
+          </div>
+
+          <div class="shortcut-group">
+            <h4>Editing</h4>
+            <div class="sc-row"><span>Undo</span><kbd>Ctrl + Z</kbd></div>
+            <div class="sc-row"><span>Redo</span><kbd>Ctrl + Y</kbd></div>
+            <div class="sc-row"><span>Copy Selection</span><kbd>Ctrl + C</kbd></div>
+            <div class="sc-row"><span>Cut Selection</span><kbd>Ctrl + X</kbd></div>
+            <div class="sc-row"><span>Paste Selection</span><kbd>Ctrl + V</kbd></div>
+            <div class="sc-row"><span>Duplicate Selection</span><kbd>Ctrl + D</kbd></div>
+            <div class="sc-row"><span>Delete Selection</span><kbd>Delete / Backspace</kbd></div>
+          </div>
+
+          <div class="shortcut-group">
+            <h4>Workspace</h4>
+            <div class="sc-row"><span>Group Selection</span><kbd>Ctrl + G</kbd></div>
+            <div class="sc-row"><span>Ungroup Selection</span><kbd>Ctrl + Shift + G</kbd></div>
+            <div class="sc-row"><span>Step Rotate (+15° / −15°)</span><kbd>R / Shift + R</kbd></div>
+            <div class="sc-row"><span>Pan Bench</span><kbd>Space + Drag / Middle Drag</kbd></div>
+          </div>
+
+          <div class="shortcut-group">
+            <h4>View</h4>
+            <div class="sc-row"><span>Zoom In / Out</span><kbd>+ / −</kbd></div>
+            <div class="sc-row"><span>Reset Zoom &amp; Center</span><kbd>0</kbd></div>
+            <div class="sc-row"><span>Shortcuts Help</span><kbd>?</kbd></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Confirmation Dialog Modal -->
+    <div class="modal-backdrop" id="modal-confirm" style="display:none">
+      <div class="modal-card modal-sm">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <div class="modal-icon-box warning">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+              </svg>
+            </div>
+            <div>
+              <span class="prop-category-tag">CONFIRMATION REQUIRED</span>
+              <h3 id="confirm-title">Confirm Action</h3>
+            </div>
+          </div>
+        </div>
+        <div class="modal-body">
+          <p id="confirm-message" class="confirm-message-text"></p>
+          <div class="confirm-actions-row">
+            <button class="tb-btn" id="btn-confirm-cancel">Cancel</button>
+            <button class="tb-btn danger" id="btn-confirm-ok">Confirm</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Component Info Modal -->
+    <div class="modal-backdrop" id="modal-comp-info" style="display:none">
+      <div class="modal-card modal-md">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <div class="modal-icon-box" id="comp-info-icon"></div>
+            <div>
+              <span class="prop-category-tag" id="comp-info-category">OPTICAL COMPONENT</span>
+              <h3 id="comp-info-title">Component Info</h3>
+            </div>
+          </div>
+          <button class="icon-action-btn" id="btn-close-comp-info" title="Close (Esc)">✕</button>
+        </div>
+        <div class="modal-body" id="comp-info-body"></div>
+        <div class="modal-footer">
+          <div class="modal-footer-hint">
+            <span>Tip: Drag from the left library or click Add to place on bench</span>
+          </div>
+          <div class="modal-header-actions">
+            <button class="tb-btn" id="btn-comp-info-close-footer">Close</button>
+            <button class="tb-btn active" id="btn-comp-info-add">+ Add to Bench</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <script src="optics.js"></script>
+  <script src="renderer.js"></script>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

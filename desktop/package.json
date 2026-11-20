@@ -1,0 +1,83 @@
+{
+  "name": "optilab-desktop",
+  "productName": "OptiLab",
+  "version": "1.0.0",
+  "description": "OptiLab — Interactive 2D Geometric Optics Simulation Desktop App",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "OPTILAB_DEV=1 electron .",
+    "build": "electron-builder",
+    "build:linux": "electron-builder --linux",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "^35.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "sk.optilab.desktop",
+    "productName": "OptiLab",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "icon.png",
+      "icon.svg",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "..",
+        "to": "web",
+        "filter": [
+          "app.html",
+          "index.html",
+          "optics.js",
+          "renderer.js",
+          "i18n.js",
+          "app.js",
+          "styles.css",
+          "landing.css",
+          "landing.js"
+        ]
+      }
+    ],
+    "fileAssociations": [
+      {
+        "ext": "optp",
+        "name": "OptiLab Optical Project",
+        "description": "OptiLab 2D Optical Simulation Project",
+        "mimeType": "application/json",
+        "role": "Editor"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Education;Science;Physics;",
+      "icon": "icon.png"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.education",
+      "icon": "icon.png"
+    }
+  }
+}

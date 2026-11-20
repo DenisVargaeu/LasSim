@@ -6,7 +6,7 @@
     GRID_MAJOR: 5,
     MAX_RAY_LENGTH: 8000,
     MAX_REFRACTIONS: 32,
-    MAX_TOTAL_SEGMENTS: 2000,
+    MAX_TOTAL_SEGMENTS: 3500,
     RAY_EPSILON: 0.4,
     ROTATION_HANDLE_DIST: 38,
     ROTATION_HANDLE_R: 6,
@@ -19,12 +19,19 @@
     DEFAULT_APERTURE: 120,
     DEFAULT_BEAM_RAYS: 7,
     DEFAULT_BEAM_WIDTH: 72,
+    DEFAULT_POINT_RAYS: 24,
     DEFAULT_MIRROR_APERTURE: 110,
     DEFAULT_SPLITTER_SIZE: 84,
     DEFAULT_PRISM_SIZE: 110,
     DEFAULT_BLOCK_WIDTH: 140,
     DEFAULT_BLOCK_HEIGHT: 84,
+    DEFAULT_SPHERE_RADIUS: 52,
     DEFAULT_DETECTOR_APERTURE: 76,
+    DEFAULT_SLIT_APERTURE: 160,
+    DEFAULT_BLOCKER_APERTURE: 100,
+    DEFAULT_GRATING_APERTURE: 110,
+    DEFAULT_GRATING_LINES_MM: 500,
+    DEFAULT_POLARIZER_APERTURE: 104,
     DEFAULT_REFRACTIVE_INDEX: 1.52,
   };
 
@@ -534,13 +541,178 @@
     get thickness() { return 10; }
   }
 
+  // ── 8. Point Light Source (Omnidirectional / Wide-Fan Emitter) ──
+  class PointSource extends Component {
+    constructor(x, y) {
+      super('point-source', x, y);
+      this.wavelength = 589; // Warm sodium yellow if monochromatic
+      this.whiteLight = true;
+      this.intensity = 0.85;
+      this.numRays = CFG.DEFAULT_POINT_RAYS;
+      this.spreadAngle = 360; // degrees (360 = full omnidirectional, <360 = fan centered on rotation)
+      this._color = wavelengthToRGB(this.wavelength);
+    }
+
+    get color() {
+      if (this.whiteLight) return { r: 248, g: 244, b: 232 };
+      return this._color;
+    }
+
+    setWavelength(wl) {
+      this.wavelength = clamp(Math.round(wl), 380, 780);
+      this._color = wavelengthToRGB(this.wavelength);
+    }
+
+    get radius() { return 12; }
+  }
+
+  // ── 9. Dielectric Glass Sphere / Ball Lens ──
+  class GlassSphere extends Component {
+    constructor(x, y) {
+      super('glass-sphere', x, y);
+      this.radius = CFG.DEFAULT_SPHERE_RADIUS;
+      this.refractiveIndex = CFG.DEFAULT_REFRACTIVE_INDEX;
+      this.dispersion = 0.05;
+      this.splitSpectrum = true;
+    }
+
+    // Effective focal length of a homogeneous ball lens: EFL = n*R / (2*(n - 1))
+    get effectiveFocalLength() {
+      const denom = 2 * Math.max(0.01, this.refractiveIndex - 1);
+      return (this.refractiveIndex * this.radius) / denom;
+    }
+
+    get backFocalLength() {
+      return this.effectiveFocalLength - this.radius;
+    }
+
+    effectiveIndex(wavelength = 550) {
+      const delta = (550 - wavelength) / 170;
+      return clamp(this.refractiveIndex + this.dispersion * delta, 1.01, 3.0);
+    }
+  }
+
+  // ── 10. Aperture / Multi-Slit Barrier ──
+  class ApertureSlit extends Component {
+    constructor(x, y) {
+      super('aperture-slit', x, y);
+      this.aperture = CFG.DEFAULT_SLIT_APERTURE; // Total barrier height
+      this.slitCount = 2; // 1 (single slit / pinhole), 2 (double slit), or 3 (triple slit)
+      this.slitWidth = 16; // Width of each open slit in px
+      this.slitSpacing = 44; // Center-to-center spacing between adjacent slits
+    }
+
+    // Returns sorted open slit intervals [[lo, hi], ...] in local Y coordinates [-aperture/2, +aperture/2]
+    getSlitIntervals() {
+      const halfAp = this.aperture / 2;
+      const count = clamp(Math.round(this.slitCount), 1, 3);
+      const halfW = clamp(this.slitWidth, 2, this.aperture - 8) / 2;
+      const spacing = Math.max(this.slitWidth + 4, this.slitSpacing);
+      const intervals = [];
+
+      for (let i = 0; i < count; i++) {
+        const center = (i - (count - 1) / 2) * spacing;
+        const lo = clamp(center - halfW, -halfAp + 3, halfAp - 3);
+        const hi = clamp(center + halfW, -halfAp + 3, halfAp - 3);
+        if (hi - lo > 0.5) {
+          intervals.push([lo, hi]);
+        }
+      }
+
+      // Merge any overlapping intervals
+      intervals.sort((a, b) => a[0] - b[0]);
+      const merged = [];
+      for (const iv of intervals) {
+        if (!merged.length || iv[0] > merged[merged.length - 1][1]) {
+          merged.push([iv[0], iv[1]]);
+        } else {
+          merged[merged.length - 1][1] = Math.max(merged[merged.length - 1][1], iv[1]);
+        }
+      }
+      return merged;
+    }
+
+    // Returns solid opaque barrier intervals [[lo, hi], ...] along [-aperture/2, +aperture/2]
+    getOpaqueSegments() {
+      const halfAp = this.aperture / 2;
+      const slits = this.getSlitIntervals();
+      const segs = [];
+      let cursor = -halfAp;
+      for (const [lo, hi] of slits) {
+        if (lo > cursor + 0.25) {
+          segs.push([cursor, lo]);
+        }
+        cursor = Math.max(cursor, hi);
+      }
+      if (halfAp > cursor + 0.25) {
+        segs.push([cursor, halfAp]);
+      }
+      return segs;
+    }
+
+    isInSlit(localU) {
+      const slits = this.getSlitIntervals();
+      for (const [lo, hi] of slits) {
+        if (localU > lo && localU < hi) return true;
+      }
+      return false;
+    }
+
+    get thickness() { return 10; }
+  }
+
+  // ── 11. Beam Blocker / Optical Baffle ──
+  class BeamBlocker extends Component {
+    constructor(x, y) {
+      super('beam-blocker', x, y);
+      this.aperture = CFG.DEFAULT_BLOCKER_APERTURE;
+    }
+
+    get thickness() { return 12; }
+  }
+
+  // ── 12. Transmission Diffraction Grating ──
+  class DiffractionGrating extends Component {
+    constructor(x, y) {
+      super('diffraction-grating', x, y);
+      this.aperture = CFG.DEFAULT_GRATING_APERTURE;
+      this.linesPerMm = CFG.DEFAULT_GRATING_LINES_MM; // Groove density (lines/mm)
+      this.maxOrder = 2; // Max diffraction order |m| = 1..3
+    }
+
+    // Grating groove spacing d in nanometers
+    get grooveSpacingNm() {
+      return 1e6 / Math.max(50, this.linesPerMm);
+    }
+
+    get thickness() { return 8; }
+  }
+
+  // ── 13. Linear Optical Polarizer (Malus's Law) ──
+  class Polarizer extends Component {
+    constructor(x, y) {
+      super('polarizer', x, y);
+      this.aperture = CFG.DEFAULT_POLARIZER_APERTURE;
+      this.polAngle = 0; // Transmission axis angle in degrees (0°..180°)
+    }
+
+    setPolAngle(a) {
+      let v = ((Number(a) % 180) + 180) % 180;
+      this.polAngle = Math.round(v * 10) / 10;
+    }
+
+    get thickness() { return 10; }
+  }
+
   function createComponent(type, x, y) {
     switch (type) {
       case 'laser': return new Laser(x, y, false);
       case 'white-led': return new Laser(x, y, true);
       case 'rgb-led': return new Laser(x, y, 'rgb-led');
+      case 'point-source': return new PointSource(x, y);
       case 'convex-lens': return new Lens('convex-lens', x, y);
       case 'concave-lens': return new Lens('concave-lens', x, y);
+      case 'glass-sphere': return new GlassSphere(x, y);
       case 'plane-mirror': return new PlaneMirror(x, y);
       case 'concave-mirror': return new CurvedMirror('concave-mirror', x, y);
       case 'convex-mirror': return new CurvedMirror('convex-mirror', x, y);
@@ -550,6 +722,10 @@
       case 'optical-detector': return new OpticalDetector(x, y);
       case 'optical-filter':
       case 'color-filter': return new ColorFilter(x, y);
+      case 'aperture-slit': return new ApertureSlit(x, y);
+      case 'beam-blocker': return new BeamBlocker(x, y);
+      case 'diffraction-grating': return new DiffractionGrating(x, y);
+      case 'polarizer': return new Polarizer(x, y);
       default: throw new Error('Unknown component type: ' + type);
     }
   }
@@ -568,9 +744,20 @@
       copy.isRgbLed = src.isRgbLed;
       if (src.rgb) copy.setRgb(src.rgb.r, src.rgb.g, src.rgb.b);
       copy.splitRgbRays = src.splitRgbRays;
+    } else if (src instanceof PointSource) {
+      copy.setWavelength(src.wavelength);
+      copy.whiteLight = src.whiteLight;
+      copy.intensity = src.intensity;
+      copy.numRays = src.numRays;
+      copy.spreadAngle = src.spreadAngle;
     } else if (src instanceof Lens) {
       copy.focalLength = src.focalLength;
       copy.aperture = src.aperture;
+    } else if (src instanceof GlassSphere) {
+      copy.radius = src.radius;
+      copy.refractiveIndex = src.refractiveIndex;
+      copy.dispersion = src.dispersion;
+      copy.splitSpectrum = src.splitSpectrum;
     } else if (src instanceof PlaneMirror) {
       copy.aperture = src.aperture;
     } else if (src instanceof CurvedMirror) {
@@ -602,6 +789,20 @@
       copy.bandwidth = src.bandwidth;
       copy.transmission = src.transmission;
       copy.aperture = src.aperture;
+    } else if (src instanceof ApertureSlit) {
+      copy.aperture = src.aperture;
+      copy.slitCount = src.slitCount;
+      copy.slitWidth = src.slitWidth;
+      copy.slitSpacing = src.slitSpacing;
+    } else if (src instanceof BeamBlocker) {
+      copy.aperture = src.aperture;
+    } else if (src instanceof DiffractionGrating) {
+      copy.aperture = src.aperture;
+      copy.linesPerMm = src.linesPerMm;
+      copy.maxOrder = src.maxOrder;
+    } else if (src instanceof Polarizer) {
+      copy.aperture = src.aperture;
+      copy.setPolAngle(src.polAngle);
     }
     return copy;
   }
@@ -630,10 +831,25 @@
         rgb: comp.rgb ? { ...comp.rgb } : { r: 1, g: 1, b: 1 },
         splitRgbRays: Boolean(comp.splitRgbRays),
       });
+    } else if (comp instanceof PointSource) {
+      Object.assign(base, {
+        wavelength: comp.wavelength,
+        whiteLight: Boolean(comp.whiteLight),
+        intensity: comp.intensity,
+        numRays: comp.numRays,
+        spreadAngle: comp.spreadAngle,
+      });
     } else if (comp instanceof Lens) {
       Object.assign(base, {
         focalLength: comp.focalLength,
         aperture: comp.aperture,
+      });
+    } else if (comp instanceof GlassSphere) {
+      Object.assign(base, {
+        radius: comp.radius,
+        refractiveIndex: comp.refractiveIndex,
+        dispersion: comp.dispersion,
+        splitSpectrum: Boolean(comp.splitSpectrum),
       });
     } else if (comp instanceof PlaneMirror) {
       Object.assign(base, {
@@ -677,6 +893,28 @@
         transmission: comp.transmission,
         aperture: comp.aperture,
       });
+    } else if (comp instanceof ApertureSlit) {
+      Object.assign(base, {
+        aperture: comp.aperture,
+        slitCount: comp.slitCount,
+        slitWidth: comp.slitWidth,
+        slitSpacing: comp.slitSpacing,
+      });
+    } else if (comp instanceof BeamBlocker) {
+      Object.assign(base, {
+        aperture: comp.aperture,
+      });
+    } else if (comp instanceof DiffractionGrating) {
+      Object.assign(base, {
+        aperture: comp.aperture,
+        linesPerMm: comp.linesPerMm,
+        maxOrder: comp.maxOrder,
+      });
+    } else if (comp instanceof Polarizer) {
+      Object.assign(base, {
+        aperture: comp.aperture,
+        polAngle: comp.polAngle,
+      });
     }
 
     return base;
@@ -711,9 +949,20 @@
         comp.setRgb(data.rgb.r ?? 1, data.rgb.g ?? 1, data.rgb.b ?? 1);
       }
       if (data.splitRgbRays !== undefined) comp.splitRgbRays = Boolean(data.splitRgbRays);
+    } else if (comp instanceof PointSource) {
+      if (data.wavelength !== undefined) comp.setWavelength(Number(data.wavelength));
+      if (data.whiteLight !== undefined) comp.whiteLight = Boolean(data.whiteLight);
+      if (data.intensity !== undefined) comp.intensity = clamp(Number(data.intensity), 0.05, 1.0);
+      if (data.numRays !== undefined) comp.numRays = clamp(parseInt(data.numRays, 10) || 24, 4, 72);
+      if (data.spreadAngle !== undefined) comp.spreadAngle = clamp(Number(data.spreadAngle) || 360, 15, 360);
     } else if (comp instanceof Lens) {
       if (data.focalLength !== undefined) comp.focalLength = clamp(Number(data.focalLength) || 160, 20, 1000);
       if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 120, 30, 400);
+    } else if (comp instanceof GlassSphere) {
+      if (data.radius !== undefined) comp.radius = clamp(Number(data.radius) || 52, 20, 180);
+      if (data.refractiveIndex !== undefined) comp.refractiveIndex = clamp(Number(data.refractiveIndex) || 1.52, 1.1, 2.5);
+      if (data.dispersion !== undefined) comp.dispersion = clamp(Number(data.dispersion) || 0, 0, 0.16);
+      if (data.splitSpectrum !== undefined) comp.splitSpectrum = Boolean(data.splitSpectrum);
     } else if (comp instanceof PlaneMirror) {
       if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 110, 30, 320);
     } else if (comp instanceof CurvedMirror) {
@@ -745,6 +994,20 @@
       if (data.bandwidth !== undefined) comp.bandwidth = clamp(Number(data.bandwidth) || 65, 10, 200);
       if (data.transmission !== undefined) comp.transmission = clamp(Number(data.transmission), 0, 1);
       if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 104, 30, 320);
+    } else if (comp instanceof ApertureSlit) {
+      if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 160, 60, 400);
+      if (data.slitCount !== undefined) comp.slitCount = clamp(parseInt(data.slitCount, 10) || 2, 1, 3);
+      if (data.slitWidth !== undefined) comp.slitWidth = clamp(Number(data.slitWidth) || 16, 4, 100);
+      if (data.slitSpacing !== undefined) comp.slitSpacing = clamp(Number(data.slitSpacing) || 44, 12, 160);
+    } else if (comp instanceof BeamBlocker) {
+      if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 100, 24, 360);
+    } else if (comp instanceof DiffractionGrating) {
+      if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 110, 40, 320);
+      if (data.linesPerMm !== undefined) comp.linesPerMm = clamp(Number(data.linesPerMm) || 500, 100, 1200);
+      if (data.maxOrder !== undefined) comp.maxOrder = clamp(parseInt(data.maxOrder, 10) || 2, 1, 3);
+    } else if (comp instanceof Polarizer) {
+      if (data.aperture !== undefined) comp.aperture = clamp(Number(data.aperture) || 104, 30, 320);
+      if (data.polAngle !== undefined) comp.setPolAngle(Number(data.polAngle) || 0);
     }
 
     return comp;
@@ -819,12 +1082,14 @@
       const lenses = [];
       const curvedMirrors = [];
       const lasers = [];
+      const pointSources = [];
       const detectors = [];
 
       for (const c of components) {
         if (c instanceof Lens) lenses.push(c);
         else if (c instanceof CurvedMirror) curvedMirrors.push(c);
         else if (c instanceof Laser) lasers.push(c);
+        else if (c instanceof PointSource) pointSources.push(c);
         else if (c instanceof OpticalDetector) {
           c.resetReadings();
           detectors.push(c);
@@ -938,6 +1203,40 @@
         }
       }
 
+      // Build initial rays from all Point Sources (omnidirectional or radial fan)
+      for (const src of pointSources) {
+        const baseRad = rad(src.rotation);
+        const n = clamp(Math.round(src.numRays), 1, 72);
+        const spread = clamp(Number(src.spreadAngle) || 360, 15, 360);
+        const fullCircle = spread >= 359.5;
+        const origin = { x: src.x, y: src.y };
+
+        for (let i = 0; i < n; i++) {
+          let angle;
+          if (fullCircle) {
+            angle = baseRad + (i / n) * Math.PI * 2;
+          } else {
+            const frac = n === 1 ? 0 : i / (n - 1) - 0.5;
+            angle = baseRad + rad(frac * spread);
+          }
+          const dir = V.create(Math.cos(angle), Math.sin(angle));
+          queue.push({
+            origin,
+            dir,
+            wavelength: src.whiteLight ? 550 : src.wavelength,
+            color: src.color,
+            intensity: src.intensity,
+            depth: 0,
+            skipTag: null,
+            dispersed: false,
+            isWhite: Boolean(src.whiteLight),
+            rgbChannels: src.whiteLight ? { r: 1, g: 1, b: 1 } : null,
+            polarized: false,
+            polAngle: 0,
+          });
+        }
+      }
+
       // Process ray queue (handles splitting and multi-surface refractions)
       while (queue.length > 0 && this.segments.length < CFG.MAX_TOTAL_SEGMENTS) {
         const ray = queue.shift();
@@ -957,6 +1256,8 @@
       let dispersed = ray.dispersed;
       let isWhite = Boolean(ray.isWhite);
       let rgbChannels = ray.rgbChannels ? { ...ray.rgbChannels } : isWhite ? { r: 1, g: 1, b: 1 } : null;
+      let polarized = Boolean(ray.polarized);
+      let polAngle = Number(ray.polAngle) || 0;
 
       while (
         remaining > 0 &&
@@ -982,6 +1283,11 @@
         // 1. Optical Detector: absorbs ray and records intensity
         if (comp instanceof OpticalDetector) {
           comp.recordHit(intensity, wavelength);
+          break;
+        }
+
+        // 1b. Opaque Beam Blocker or Aperture Barrier: absorbs ray
+        if (comp instanceof BeamBlocker || comp instanceof ApertureSlit) {
           break;
         }
 
@@ -1024,6 +1330,109 @@
           continue;
         }
 
+        // 3c. Linear Optical Polarizer (Malus's Law: I = I0 * cos^2(Δθ))
+        if (comp instanceof Polarizer) {
+          let factor = 0.5;
+          if (polarized) {
+            const c = Math.cos(rad(comp.polAngle - polAngle));
+            factor = c * c;
+          }
+          const newIntensity = intensity * factor;
+          if (newIntensity <= 0.015) {
+            break;
+          }
+          intensity = newIntensity;
+          polarized = true;
+          polAngle = comp.polAngle;
+          pos = V.add(hitPoint, V.scale(dir, CFG.RAY_EPSILON));
+          skipTag = comp.id;
+          continue;
+        }
+
+        // 3d. Transmission Diffraction Grating: d * (sin θm - sin θi) = m * λ
+        if (comp instanceof DiffractionGrating) {
+          // Orient normal along forward transmission direction (dot(dir, fwdNormal) > 0)
+          const fwdNormal = V.dot(dir, hit.normal) >= 0 ? hit.normal : V.scale(hit.normal, -1);
+          const tangent = { x: -fwdNormal.y, y: fwdNormal.x };
+          const sinI = V.dot(dir, tangent);
+          const dNm = comp.grooveSpacingNm;
+          const maxM = clamp(Math.round(comp.maxOrder), 1, 3);
+          const orderWeights = [0.45, 0.34, 0.2, 0.12];
+
+          if (depth < CFG.MAX_REFRACTIONS - 2 && intensity > 0.025) {
+            for (let m = -maxM; m <= maxM; m++) {
+              const absM = Math.abs(m);
+              const wOrder = orderWeights[absM] || 0.1;
+
+              if (m === 0) {
+                // 0th order passes straight through undispersed
+                const outInt = intensity * wOrder;
+                if (outInt > 0.015) {
+                  queue.push({
+                    origin: V.add(hitPoint, V.scale(dir, CFG.RAY_EPSILON)),
+                    dir,
+                    wavelength,
+                    color,
+                    intensity: outInt,
+                    depth,
+                    skipTag: comp.id,
+                    dispersed,
+                    isWhite,
+                    rgbChannels: rgbChannels ? { ...rgbChannels } : null,
+                    polarized,
+                    polAngle,
+                  });
+                }
+                continue;
+              }
+
+              // Non-zero diffraction orders separate wavelengths by sin(θm) = sin(θi) + m*λ/d
+              let bands;
+              if (isWhite) {
+                bands = [420, 455, 490, 532, 575, 615, 660].map((wl) => ({
+                  wl,
+                  col: wavelengthToRGB(wl),
+                  weight: 0.55,
+                }));
+              } else if (rgbChannels) {
+                bands = [
+                  { ch: rgbChannels.r, wl: 640, col: { r: 255, g: 38, b: 28 } },
+                  { ch: rgbChannels.g, wl: 532, col: { r: 40, g: 235, b: 60 } },
+                  { ch: rgbChannels.b, wl: 460, col: { r: 35, g: 125, b: 255 } },
+                ]
+                  .filter((b) => b.ch > 0.015)
+                  .map((b) => ({ wl: b.wl, col: b.col, weight: b.ch * 0.85 }));
+              } else {
+                bands = [{ wl: wavelength, col: color, weight: 1.0 }];
+              }
+
+              for (const band of bands) {
+                const sinM = sinI + (m * band.wl) / dNm;
+                if (Math.abs(sinM) >= 0.985) continue;
+                const cosM = Math.sqrt(1 - sinM * sinM);
+                const outDir = V.norm(V.add(V.scale(fwdNormal, cosM), V.scale(tangent, sinM)));
+                const outInt = intensity * wOrder * band.weight;
+                if (outInt <= 0.015) continue;
+                queue.push({
+                  origin: V.add(hitPoint, V.scale(outDir, CFG.RAY_EPSILON)),
+                  dir: outDir,
+                  wavelength: band.wl,
+                  color: band.col,
+                  intensity: outInt,
+                  depth,
+                  skipTag: comp.id,
+                  dispersed: true,
+                  isWhite: false,
+                  rgbChannels: null,
+                  polarized,
+                  polAngle,
+                });
+              }
+            }
+          }
+          break;
+        }
+
         // 4. Beam Splitter: splits into transmitted ray and reflected ray
         if (comp instanceof BeamSplitter) {
           const reflIntensity = intensity * comp.reflectance;
@@ -1043,6 +1452,8 @@
               dispersed,
               isWhite,
               rgbChannels: rgbChannels ? { ...rgbChannels } : null,
+              polarized,
+              polAngle,
             });
           }
 
@@ -1057,11 +1468,11 @@
           }
         }
 
-        // 5. Prism or Glass Block: Snell's Law Refraction + Dispersion + Total Internal Reflection
-        if (comp instanceof Prism || comp instanceof GlassBlock) {
-          // If prism has spectral splitting enabled (or ray is White Light / Mixed RGB) and ray hasn't dispersed yet, fan out into spectral band on entry
+        // 5. Prism, Glass Block, or Dielectric Glass Sphere: Snell's Law Refraction + Dispersion + TIR
+        if (comp instanceof Prism || comp instanceof GlassBlock || comp instanceof GlassSphere) {
+          // If prism/sphere has spectral splitting enabled (or ray is White Light / Mixed RGB) and ray hasn't dispersed yet, fan out into spectral band on entry
           if (
-            comp instanceof Prism &&
+            (comp instanceof Prism || comp instanceof GlassSphere) &&
             (comp.splitSpectrum || isWhite || rgbChannels) &&
             comp.dispersion > 0.005 &&
             !dispersed &&
@@ -1090,6 +1501,8 @@
                   dispersed: true,
                   isWhite: false,
                   rgbChannels: null,
+                  polarized,
+                  polAngle,
                 });
               }
               break;
@@ -1112,6 +1525,8 @@
                 skipTag: hit.tag,
                 dispersed: true,
                 isWhite: false,
+                polarized,
+                polAngle,
               });
             }
             break;
@@ -1133,7 +1548,7 @@
       let nearest = null;
 
       for (const comp of components) {
-        if (comp instanceof Laser) continue;
+        if (comp instanceof Laser || comp instanceof PointSource) continue;
 
         if (comp instanceof Lens) {
           if (skipTag === comp.id) continue;
@@ -1153,10 +1568,22 @@
           if (h && (!nearest || h.t < nearest.t)) {
             nearest = { t: h.t, normal: h.normal, comp, tag: comp.id };
           }
-        } else if (comp instanceof ColorFilter) {
+        } else if (comp instanceof ColorFilter || comp instanceof Polarizer || comp instanceof DiffractionGrating) {
           if (skipTag === comp.id) continue;
           const h = this._intersectSegmentCentered(origin, dir, comp.x, comp.y, rad(comp.rotation), comp.aperture);
           if (h && (!nearest || h.t < nearest.t)) {
+            nearest = { t: h.t, normal: h.normal, comp, tag: comp.id };
+          }
+        } else if (comp instanceof BeamBlocker) {
+          if (skipTag === comp.id) continue;
+          const h = this._intersectSegmentCentered(origin, dir, comp.x, comp.y, rad(comp.rotation), comp.aperture);
+          if (h && (!nearest || h.t < nearest.t)) {
+            nearest = { t: h.t, normal: h.normal, comp, tag: comp.id };
+          }
+        } else if (comp instanceof ApertureSlit) {
+          if (skipTag === comp.id) continue;
+          const h = this._intersectSegmentCentered(origin, dir, comp.x, comp.y, rad(comp.rotation), comp.aperture);
+          if (h && !comp.isInSlit(h.u) && (!nearest || h.t < nearest.t)) {
             nearest = { t: h.t, normal: h.normal, comp, tag: comp.id };
           }
         } else if (comp instanceof OpticalDetector) {
@@ -1173,6 +1600,17 @@
           const h = this._intersectSegmentCentered(origin, dir, comp.x, comp.y, diagAngle, diagLen);
           if (h && (!nearest || h.t < nearest.t)) {
             nearest = { t: h.t, normal: h.normal, comp, tag: comp.id };
+          }
+        } else if (comp instanceof GlassSphere) {
+          const h = this._intersectCircle(origin, dir, comp);
+          if (h && (!nearest || h.t < nearest.t)) {
+            nearest = {
+              t: h.t,
+              normal: h.normal,
+              entering: h.entering,
+              comp,
+              tag: null,
+            };
           }
         } else if (comp instanceof Prism || comp instanceof GlassBlock) {
           const verts = comp.getWorldVertices();
@@ -1288,6 +1726,33 @@
       return null;
     }
 
+    // Intersect ray with a circular dielectric body (GlassSphere / Ball Lens)
+    _intersectCircle(origin, dir, sphere) {
+      const mx = origin.x - sphere.x;
+      const my = origin.y - sphere.y;
+      const R = Math.max(10, sphere.radius);
+
+      const b = mx * dir.x + my * dir.y;
+      const c = mx * mx + my * my - R * R;
+      const disc = b * b - c;
+      if (disc < 0) return null;
+
+      const sqrtDisc = Math.sqrt(disc);
+      const candidates = [-b - sqrtDisc, -b + sqrtDisc];
+
+      for (const t of candidates) {
+        if (t < CFG.RAY_EPSILON) continue;
+        const hx = origin.x + t * dir.x;
+        const hy = origin.y + t * dir.y;
+        const outNormal = V.norm({ x: hx - sphere.x, y: hy - sphere.y });
+        const entering = V.dot(dir, outNormal) < 0;
+        const orientedNormal = entering ? outNormal : V.scale(outNormal, -1);
+        return { t, normal: orientedNormal, entering };
+      }
+
+      return null;
+    }
+
     // Intersect ray (origin + t * dir) with segment [A, B]
     _intersectSegmentAB(origin, dir, a, b) {
       const v1 = V.sub(origin, a);
@@ -1369,7 +1834,9 @@
     rgbStr,
     Component,
     Laser,
+    PointSource,
     Lens,
+    GlassSphere,
     PlaneMirror,
     CurvedMirror,
     BeamSplitter,
@@ -1377,6 +1844,10 @@
     GlassBlock,
     OpticalDetector,
     ColorFilter,
+    ApertureSlit,
+    BeamBlocker,
+    DiffractionGrating,
+    Polarizer,
     FILTER_PRESETS,
     createComponent,
     cloneComponent,

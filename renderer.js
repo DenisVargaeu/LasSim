@@ -7,7 +7,9 @@
     rgbStr,
     wavelengthToRGB,
     Laser,
+    PointSource,
     Lens,
+    GlassSphere,
     PlaneMirror,
     CurvedMirror,
     BeamSplitter,
@@ -15,6 +17,10 @@
     GlassBlock,
     OpticalDetector,
     ColorFilter,
+    ApertureSlit,
+    BeamBlocker,
+    DiffractionGrating,
+    Polarizer,
     createComponent,
   } = global.OptiLab;
 
@@ -57,6 +63,9 @@
         '#b5826a': '#dcb398',
         '#a5785f': '#d1a688',
         '#448361': '#62b48b',
+        '#2c2a27': '#3b3732',
+        '#1e1c1a': '#5b544c',
+        '#7c62a8': '#a88fd4',
       };
       const PREFIX = [
         ['rgba(55, 53, 47', 'rgba(237, 231, 222'],
@@ -65,6 +74,7 @@
         ['rgba(159, 107, 83', 'rgba(201, 157, 128'],
         ['rgba(90, 134, 168', 'rgba(132, 172, 204'],
         ['rgba(68, 131, 97', 'rgba(98, 180, 139'],
+        ['rgba(124, 98, 168', 'rgba(168, 143, 212'],
       ];
       const map = (v) => {
         if (renderer.theme !== 'dark' || typeof v !== 'string') return v;
@@ -227,8 +237,12 @@
 
         if (comp instanceof Laser) {
           this._drawLaser(ctx, comp, isSelected, isHovered, zoom);
+        } else if (comp instanceof PointSource) {
+          this._drawPointSource(ctx, comp, isSelected, isHovered, zoom);
         } else if (comp instanceof Lens) {
           this._drawLens(ctx, comp, isSelected, isHovered, zoom);
+        } else if (comp instanceof GlassSphere) {
+          this._drawGlassSphere(ctx, comp, isSelected, isHovered, zoom);
         } else if (comp instanceof PlaneMirror) {
           this._drawPlaneMirror(ctx, comp, isSelected, isHovered, zoom);
         } else if (comp instanceof CurvedMirror) {
@@ -243,6 +257,14 @@
           this._drawOpticalDetector(ctx, comp, isSelected, isHovered, zoom);
         } else if (comp instanceof ColorFilter) {
           this._drawColorFilter(ctx, comp, isSelected, isHovered, zoom);
+        } else if (comp instanceof ApertureSlit) {
+          this._drawApertureSlit(ctx, comp, isSelected, isHovered, zoom);
+        } else if (comp instanceof BeamBlocker) {
+          this._drawBeamBlocker(ctx, comp, isSelected, isHovered, zoom);
+        } else if (comp instanceof DiffractionGrating) {
+          this._drawDiffractionGrating(ctx, comp, isSelected, isHovered, zoom);
+        } else if (comp instanceof Polarizer) {
+          this._drawPolarizer(ctx, comp, isSelected, isHovered, zoom);
         }
 
         ctx.restore();
@@ -798,6 +820,303 @@
       }
     }
 
+    // ── 7. Point Light Source ──
+    _drawPointSource(ctx, src, selected, hovered, zoom) {
+      const r = src.radius;
+      const c = src.color;
+
+      // Soft outer glow halo
+      ctx.fillStyle = rgbStr(c, 0.22);
+      ctx.beginPath();
+      ctx.arc(0, 0, r + 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Fan sector guide if spreadAngle < 360°
+      if (src.spreadAngle < 359.5) {
+        const halfSpread = rad(src.spreadAngle / 2);
+        ctx.strokeStyle = rgbStr(c, 0.45);
+        ctx.lineWidth = 1.2 / zoom;
+        ctx.beginPath();
+        ctx.arc(0, 0, r + 9, -halfSpread, halfSpread);
+        ctx.stroke();
+      }
+
+      // Emitter housing ring
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = selected ? '#9f6b53' : hovered ? '#9c8f7e' : '#cdc3b4';
+      ctx.lineWidth = (selected ? 2 : 1.3) / zoom;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Glowing filament core
+      ctx.fillStyle = rgbStr(c, 0.95);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.56, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Small center specular dot
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.arc(-r * 0.16, -r * 0.16, r * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+
+      if (selected) {
+        const box = r + 8;
+        this._drawSelectionFrame(ctx, -box, -box, box * 2, box * 2, zoom);
+        this._drawRotationHandle(ctx, 0, -box - CFG.ROTATION_HANDLE_DIST, zoom);
+      }
+    }
+
+    // ── 8. Dielectric Glass Sphere / Ball Lens ──
+    _drawGlassSphere(ctx, sphere, selected, hovered, zoom) {
+      const R = sphere.radius;
+
+      // Translucent glass body
+      ctx.fillStyle = 'rgba(90, 134, 168, 0.14)';
+      ctx.strokeStyle = selected
+        ? '#9f6b53'
+        : hovered
+        ? '#b5826a'
+        : 'rgba(90, 134, 168, 0.82)';
+      ctx.lineWidth = (selected ? 2.2 : 1.5) / zoom;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, R, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Curved inner specular crescent highlight
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.lineWidth = 2.2 / zoom;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 0.78, -Math.PI * 0.78, -Math.PI * 0.35);
+      ctx.stroke();
+
+      // Subtle optical center crosshair
+      ctx.strokeStyle = 'rgba(90, 134, 168, 0.35)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(-5, 0); ctx.lineTo(5, 0);
+      ctx.moveTo(0, -5); ctx.lineTo(0, 5);
+      ctx.stroke();
+
+      // Refractive index readout upright inside sphere
+      ctx.save();
+      ctx.rotate(-rad(sphere.rotation));
+      ctx.fillStyle = 'rgba(90, 134, 168, 0.9)';
+      ctx.font = `600 ${9 / zoom}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`n=${sphere.refractiveIndex.toFixed(2)}`, 0, R * 0.45);
+      ctx.restore();
+
+      if (selected) {
+        const box = R + 6;
+        this._drawSelectionFrame(ctx, -box, -box, box * 2, box * 2, zoom);
+        this._drawRotationHandle(ctx, 0, -R - CFG.ROTATION_HANDLE_DIST, zoom);
+      }
+    }
+
+    // ── 9. Aperture / Multi-Slit Barrier ──
+    _drawApertureSlit(ctx, slit, selected, hovered, zoom) {
+      const halfAp = slit.aperture / 2;
+      const t = slit.thickness;
+      const segs = slit.getOpaqueSegments();
+
+      // Subtle guide dashed line across open slits
+      ctx.strokeStyle = 'rgba(120, 110, 98, 0.35)';
+      ctx.lineWidth = 1 / zoom;
+      ctx.setLineDash([3 / zoom, 3 / zoom]);
+      ctx.beginPath();
+      ctx.moveTo(0, -halfAp);
+      ctx.lineTo(0, halfAp);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw each solid opaque barrier segment
+      ctx.fillStyle = '#2c2a27';
+      ctx.strokeStyle = selected ? '#9f6b53' : hovered ? '#9c8f7e' : '#1e1c1a';
+      ctx.lineWidth = (selected ? 1.8 : 1.2) / zoom;
+
+      for (const [y0, y1] of segs) {
+        const h = y1 - y0;
+        if (h <= 0.5) continue;
+        ctx.beginPath();
+        ctx.roundRect(-t / 2, y0, t, h, 1.5 / zoom);
+        ctx.fill();
+        ctx.stroke();
+      }
+
+      // Slit count label
+      ctx.save();
+      ctx.translate(t / 2 + 12 / zoom, 0);
+      ctx.rotate(-rad(slit.rotation));
+      ctx.fillStyle = '#787774';
+      ctx.font = `600 ${8 / zoom}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${slit.slitCount}-SLIT`, 0, 0);
+      ctx.restore();
+
+      if (selected) {
+        this._drawSelectionFrame(ctx, -t / 2 - 8, -halfAp - 6, t + 16, slit.aperture + 12, zoom);
+        this._drawRotationHandle(ctx, 0, -halfAp - CFG.ROTATION_HANDLE_DIST, zoom);
+      }
+    }
+
+    // ── 10. Beam Blocker / Optical Baffle ──
+    _drawBeamBlocker(ctx, blocker, selected, hovered, zoom) {
+      const halfAp = blocker.aperture / 2;
+      const t = blocker.thickness;
+
+      // Matte absorber body
+      ctx.fillStyle = '#2c2a27';
+      ctx.strokeStyle = selected ? '#9f6b53' : hovered ? '#9c8f7e' : '#1e1c1a';
+      ctx.lineWidth = (selected ? 2 : 1.3) / zoom;
+
+      ctx.beginPath();
+      ctx.roundRect(-t / 2, -halfAp, t, blocker.aperture, 2 / zoom);
+      ctx.fill();
+      ctx.stroke();
+
+      // Matte diagonal absorber grooves
+      ctx.strokeStyle = '#787774';
+      ctx.lineWidth = 1 / zoom;
+      const step = 10;
+      ctx.beginPath();
+      for (let y = -halfAp + 6; y <= halfAp - 6; y += step) {
+        ctx.moveTo(-t / 2 + 2, y - 3);
+        ctx.lineTo(t / 2 - 2, y + 3);
+      }
+      ctx.stroke();
+
+      // End caps
+      ctx.fillStyle = '#9f6b53';
+      ctx.fillRect(-t / 2 - 1, -halfAp - 2, t + 2, 3);
+      ctx.fillRect(-t / 2 - 1, halfAp - 1, t + 2, 3);
+
+      if (selected) {
+        this._drawSelectionFrame(ctx, -t / 2 - 8, -halfAp - 6, t + 16, blocker.aperture + 12, zoom);
+        this._drawRotationHandle(ctx, 0, -halfAp - CFG.ROTATION_HANDLE_DIST, zoom);
+      }
+    }
+
+    // ── 11. Transmission Diffraction Grating ──
+    _drawDiffractionGrating(ctx, grating, selected, hovered, zoom) {
+      const halfAp = grating.aperture / 2;
+      const t = grating.thickness;
+
+      // Optical glass substrate
+      ctx.fillStyle = 'rgba(90, 134, 168, 0.18)';
+      ctx.strokeStyle = selected ? '#9f6b53' : hovered ? '#b5826a' : 'rgba(90, 134, 168, 0.85)';
+      ctx.lineWidth = (selected ? 2 : 1.4) / zoom;
+
+      ctx.beginPath();
+      ctx.roundRect(-t / 2, -halfAp, t, grating.aperture, 2 / zoom);
+      ctx.fill();
+      ctx.stroke();
+
+      // Fine diffraction ruling ticks along the surface
+      const tickSpacing = Math.max(4, Math.min(8, Math.round(4000 / grating.linesPerMm)));
+      ctx.strokeStyle = '#37352f';
+      ctx.lineWidth = 0.9 / zoom;
+      ctx.beginPath();
+      for (let y = -halfAp + 4; y <= halfAp - 4; y += tickSpacing) {
+        ctx.moveTo(-t / 2 + 1.2, y);
+        ctx.lineTo(t / 2 - 1.2, y);
+      }
+      ctx.stroke();
+
+      // Spectral rainbow indicator strip on holder caps
+      const spectral = ['#ff3b30', '#ff9500', '#34c759', '#388bfd', '#af52de'];
+      const segW = (t + 4) / spectral.length;
+      for (let i = 0; i < spectral.length; i++) {
+        ctx.fillStyle = spectral[i];
+        ctx.fillRect(-t / 2 - 2 + i * segW, -halfAp - 4, segW + 0.5, 4);
+        ctx.fillRect(-t / 2 - 2 + i * segW, halfAp, segW + 0.5, 4);
+      }
+
+      // Lines/mm badge
+      ctx.save();
+      ctx.translate(t / 2 + 12 / zoom, 0);
+      ctx.rotate(-rad(grating.rotation));
+      ctx.fillStyle = 'rgba(90, 134, 168, 0.95)';
+      ctx.font = `600 ${8 / zoom}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${grating.linesPerMm} l/mm`, 0, 0);
+      ctx.restore();
+
+      if (selected) {
+        this._drawSelectionFrame(ctx, -t / 2 - 8, -halfAp - 8, t + 16, grating.aperture + 16, zoom);
+        this._drawRotationHandle(ctx, 0, -halfAp - CFG.ROTATION_HANDLE_DIST, zoom);
+      }
+    }
+
+    // ── 12. Linear Optical Polarizer ──
+    _drawPolarizer(ctx, pol, selected, hovered, zoom) {
+      const halfAp = pol.aperture / 2;
+      const t = pol.thickness;
+
+      // Smoked dichroic polarizing film plate
+      ctx.fillStyle = 'rgba(124, 98, 168, 0.24)';
+      ctx.strokeStyle = selected ? '#9f6b53' : hovered ? '#37352f' : '#7c62a8';
+      ctx.lineWidth = (selected ? 2 : 1.5) / zoom;
+
+      ctx.beginPath();
+      ctx.roundRect(-t / 2, -halfAp, t, pol.aperture, 2 / zoom);
+      ctx.fill();
+      ctx.stroke();
+
+      // Metallic mount caps
+      ctx.fillStyle = '#f1ece3';
+      ctx.strokeStyle = '#b9ae9e';
+      ctx.lineWidth = 1 / zoom;
+      ctx.fillRect(-t / 2 - 2, -halfAp - 3, t + 4, 6);
+      ctx.strokeRect(-t / 2 - 2, -halfAp - 3, t + 4, 6);
+      ctx.fillRect(-t / 2 - 2, halfAp - 3, t + 4, 6);
+      ctx.strokeRect(-t / 2 - 2, halfAp - 3, t + 4, 6);
+
+      // Upright polarization transmission-axis dial & angle badge next to polarizer
+      ctx.save();
+      ctx.translate(t / 2 + 16 / zoom, 0);
+      ctx.rotate(-rad(pol.rotation));
+
+      const dialR = 8 / zoom;
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = '#7c62a8';
+      ctx.lineWidth = 1.2 / zoom;
+      ctx.beginPath();
+      ctx.arc(0, 0, dialR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Polarization transmission axis double-bar inside dial
+      const pRad = rad(pol.polAngle);
+      const dx = Math.cos(pRad) * (dialR - 2 / zoom);
+      const dy = -Math.sin(pRad) * (dialR - 2 / zoom);
+      ctx.strokeStyle = '#7c62a8';
+      ctx.lineWidth = 1.8 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(-dx, -dy);
+      ctx.lineTo(dx, dy);
+      ctx.stroke();
+
+      ctx.fillStyle = '#7c62a8';
+      ctx.font = `600 ${8 / zoom}px "JetBrains Mono", monospace`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`POL ${Math.round(pol.polAngle)}°`, dialR + 4 / zoom, 0);
+      ctx.restore();
+
+      if (selected) {
+        this._drawSelectionFrame(ctx, -t / 2 - 8, -halfAp - 8, t + 16, pol.aperture + 16, zoom);
+        this._drawRotationHandle(ctx, 0, -halfAp - CFG.ROTATION_HANDLE_DIST, zoom);
+      }
+    }
+
     _drawSelectionFrame(ctx, x, y, w, h, zoom) {
       ctx.strokeStyle = 'rgba(159, 107, 83, 0.45)';
       ctx.lineWidth = 1 / zoom;
@@ -849,8 +1168,12 @@
       const dummy = createComponent(type, 0, 0);
       if (dummy instanceof Laser) {
         this._drawLaser(ctx, dummy, true, false, zoom);
+      } else if (dummy instanceof PointSource) {
+        this._drawPointSource(ctx, dummy, true, false, zoom);
       } else if (dummy instanceof Lens) {
         this._drawLens(ctx, dummy, true, false, zoom);
+      } else if (dummy instanceof GlassSphere) {
+        this._drawGlassSphere(ctx, dummy, true, false, zoom);
       } else if (dummy instanceof PlaneMirror) {
         this._drawPlaneMirror(ctx, dummy, true, false, zoom);
       } else if (dummy instanceof CurvedMirror) {
@@ -865,6 +1188,14 @@
         this._drawOpticalDetector(ctx, dummy, true, false, zoom);
       } else if (dummy instanceof ColorFilter) {
         this._drawColorFilter(ctx, dummy, true, false, zoom);
+      } else if (dummy instanceof ApertureSlit) {
+        this._drawApertureSlit(ctx, dummy, true, false, zoom);
+      } else if (dummy instanceof BeamBlocker) {
+        this._drawBeamBlocker(ctx, dummy, true, false, zoom);
+      } else if (dummy instanceof DiffractionGrating) {
+        this._drawDiffractionGrating(ctx, dummy, true, false, zoom);
+      } else if (dummy instanceof Polarizer) {
+        this._drawPolarizer(ctx, dummy, true, false, zoom);
       }
 
       ctx.restore();

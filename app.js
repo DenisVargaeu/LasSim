@@ -11,7 +11,9 @@
     wavelengthToRGB,
     rgbStr,
     Laser,
+    PointSource,
     Lens,
+    GlassSphere,
     PlaneMirror,
     CurvedMirror,
     BeamSplitter,
@@ -19,6 +21,10 @@
     GlassBlock,
     OpticalDetector,
     ColorFilter,
+    ApertureSlit,
+    BeamBlocker,
+    DiffractionGrating,
+    Polarizer,
     FILTER_PRESETS,
     createComponent,
     cloneComponent,
@@ -28,7 +34,18 @@
     validateAndParseOptp,
     RayTracer,
     Renderer,
+    I18N,
   } = global.OptiLab;
+
+  const i18n = I18N || {
+    getLang: () => 'en',
+    setLang: () => 'en',
+    t: (k) => k,
+    phrase: (s) => s,
+    getComponentInfo: () => null,
+    translateSubtree: () => {},
+    applyStaticDOM: () => {},
+  };
 
   const MATERIALS = [
     { name: 'Water', n: 1.33, disp: 0.02 },
@@ -280,7 +297,7 @@
             </div>
             <div class="prop-title-meta">
               <span class="prop-category-tag">${isSingleGroup ? 'GROUPED SELECTION' : 'MULTI-OBJECT SELECTION'}</span>
-              <h3>${count} Objects Selected</h3>
+              <h3>${i18n.t('objectsSelected', { n: count })}</h3>
             </div>
           </div>
         </div>
@@ -380,6 +397,7 @@
       if (alignXBtn) alignXBtn.addEventListener('click', () => app.alignSelection('vertical'));
       if (dupBtn) dupBtn.addEventListener('click', () => app.duplicateSelection());
       if (delBtn) delBtn.addEventListener('click', () => app.deleteSelection());
+      i18n.translateSubtree(this.contentEl);
     }
 
     hide() {
@@ -396,9 +414,9 @@
       const app = this.app;
       const comps = app.components;
 
-      const sourcesCount = comps.filter((c) => c instanceof Laser).length;
+      const sourcesCount = comps.filter((c) => c instanceof Laser || c instanceof PointSource).length;
       const opticsCount = comps.filter(
-        (c) => !(c instanceof Laser) && !(c instanceof OpticalDetector)
+        (c) => !(c instanceof Laser) && !(c instanceof PointSource) && !(c instanceof OpticalDetector)
       ).length;
       const detCount = comps.filter((c) => c instanceof OpticalDetector).length;
 
@@ -406,8 +424,10 @@
         'laser': 'Laser Source',
         'white-led': 'White LED',
         'rgb-led': 'RGB LED',
+        'point-source': 'Point Source',
         'convex-lens': 'Convex Lens',
         'concave-lens': 'Concave Lens',
+        'glass-sphere': 'Ball Lens / Sphere',
         'plane-mirror': 'Plane Mirror',
         'concave-mirror': 'Concave Mirror',
         'convex-mirror': 'Convex Mirror',
@@ -417,22 +437,30 @@
         'optical-detector': 'Optical Detector',
         'optical-filter': 'Optical Filter',
         'color-filter': 'Optical Filter',
+        'aperture-slit': 'Aperture / Slit',
+        'beam-blocker': 'Beam Blocker',
+        'diffraction-grating': 'Diffraction Grating',
+        'polarizer': 'Linear Polarizer',
       };
 
       let listHtml = '';
       if (comps.length === 0) {
         listHtml = `
           <div style="padding:18px 8px;text-align:center;color:var(--text-muted);font-size:11.5px;">
-            No components on the bench yet.<br>Drag any component from the left sidebar.
+            ${i18n.t('emptyOutliner')}
           </div>
         `;
       } else {
         for (const c of comps) {
           const dotColor =
-            c instanceof Laser
+            c instanceof Laser || c instanceof PointSource
               ? rgbStr(c.color)
               : c instanceof ColorFilter
               ? rgbStr(c.color)
+              : c instanceof Polarizer
+              ? '#7c62a8'
+              : c instanceof ApertureSlit || c instanceof BeamBlocker
+              ? '#6b655c'
               : c instanceof OpticalDetector
               ? c.detected
                 ? '#448361'
@@ -471,7 +499,7 @@
         <div class="prop-section">
           <div class="prop-section-header">
             <h4>Bench Telemetry</h4>
-            <span class="prop-badge-pill">${comps.length} items</span>
+            <span class="prop-badge-pill">${i18n.t('itemsCount', { n: comps.length })}</span>
           </div>
           <div class="optical-readout">
             <div class="readout-row"><span>Light Sources</span><span>${sourcesCount}</span></div>
@@ -546,6 +574,7 @@
           app.requestUpdate();
         });
       }
+      i18n.translateSubtree(this.emptyEl);
     }
 
     refreshValues(comp) {
@@ -652,10 +681,10 @@
         statusDot.className = 'det-led ' + (det.detected ? 'active' : '');
       }
       if (statusText) {
-        statusText.textContent = det.detected ? 'LIGHT DETECTED' : 'NO SIGNAL';
+        statusText.textContent = i18n.phrase(det.detected ? 'LIGHT DETECTED' : 'NO SIGNAL');
         statusText.style.color = det.detected ? '#448361' : '#8b949e';
       }
-      if (hitsEl) hitsEl.textContent = `${det.hitCount} ray${det.hitCount === 1 ? '' : 's'}`;
+      if (hitsEl) hitsEl.textContent = i18n.t(det.hitCount === 1 ? 'raysCount' : 'raysCountPlural', { n: det.hitCount });
       if (totalIntEl) totalIntEl.textContent = `${Math.round(det.totalIntensity * 100)}% (${det.totalIntensity.toFixed(2)})`;
       if (peakIntEl) peakIntEl.textContent = `${Math.round(det.peakIntensity * 100)}%`;
       if (wlEl) {
@@ -691,11 +720,18 @@
       if (comp.type === 'rgb-led') {
         return `<svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="6" width="11" height="12" rx="2" style="stroke:var(--icon-ink,#6b655c)"/><line x1="15" y1="8" x2="22" y2="6" stroke="#ff3b30"/><line x1="15" y1="12" x2="22" y2="12" stroke="#3fb950"/><line x1="15" y1="16" x2="22" y2="18" stroke="#388bfd"/></svg>`;
       }
+      if (comp.type === 'point-source') {
+        const col = rgbStr(comp.color);
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2"><circle cx="12" cy="12" r="4" fill="${rgbStr(comp.color, 0.35)}"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/><line x1="4.9" y1="4.9" x2="7.1" y2="7.1"/><line x1="16.9" y1="16.9" x2="19.1" y2="19.1"/><line x1="19.1" y1="4.9" x2="16.9" y2="7.1"/><line x1="7.1" y1="16.9" x2="4.9" y2="19.1"/></svg>`;
+      }
       if (comp.type === 'convex-lens') {
         return `<svg viewBox="0 0 24 24" fill="none" stroke="#5a86a8" stroke-width="2"><path d="M12 2 Q18 12 12 22 Q6 12 12 2 Z"/></svg>`;
       }
       if (comp.type === 'concave-lens') {
         return `<svg viewBox="0 0 24 24" fill="none" stroke="#5a86a8" stroke-width="2"><path d="M8 3 Q12 12 8 21 L16 21 Q12 12 16 3 Z"/></svg>`;
+      }
+      if (comp.type === 'glass-sphere') {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="#5a86a8" stroke-width="2"><circle cx="12" cy="12" r="8.5" fill="rgba(90,134,168,0.18)"/><path d="M7.5 9a5.5 5.5 0 0 1 4-4" stroke-width="1.5"/></svg>`;
       }
       if (comp.type === 'plane-mirror') {
         return `<svg viewBox="0 0 24 24" fill="none" style="stroke:var(--icon-ink,#6b655c)" stroke-width="2"><line x1="15" y1="3" x2="15" y2="21"/><line x1="15" y1="6" x2="9" y2="10"/><line x1="15" y1="12" x2="9" y2="16"/><line x1="15" y1="18" x2="9" y2="22"/></svg>`;
@@ -709,6 +745,18 @@
       if (comp.type === 'optical-filter' || comp.type === 'color-filter') {
         const col = rgbStr(comp.color);
         return `<svg viewBox="0 0 24 24" fill="none" stroke="${col}" stroke-width="2"><rect x="9" y="3" width="6" height="18" rx="1.5" fill="${rgbStr(comp.color, 0.28)}"/></svg>`;
+      }
+      if (comp.type === 'aperture-slit') {
+        return `<svg viewBox="0 0 24 24" fill="none" style="stroke:var(--icon-ink,#6b655c)" stroke-width="2.4"><line x1="12" y1="2" x2="12" y2="7"/><line x1="12" y1="10.5" x2="12" y2="13.5"/><line x1="12" y1="17" x2="12" y2="22"/></svg>`;
+      }
+      if (comp.type === 'beam-blocker') {
+        return `<svg viewBox="0 0 24 24" fill="none" style="stroke:var(--icon-ink,#6b655c)" stroke-width="2"><rect x="9" y="3" width="6" height="18" rx="1" fill="rgba(120,110,98,0.35)"/><line x1="10" y1="7" x2="14" y2="10"/><line x1="10" y1="12" x2="14" y2="15"/><line x1="10" y1="17" x2="14" y2="20"/></svg>`;
+      }
+      if (comp.type === 'diffraction-grating') {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="#5a86a8" stroke-width="1.8"><rect x="9" y="3" width="6" height="18" rx="1"/><line x1="9" y1="6.5" x2="15" y2="6.5"/><line x1="9" y1="10" x2="15" y2="10"/><line x1="9" y1="13.5" x2="15" y2="13.5"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="15" y1="12" x2="21" y2="7" stroke="#ff3b30"/><line x1="15" y1="12" x2="21" y2="12" stroke="#3fb950"/><line x1="15" y1="12" x2="21" y2="17" stroke="#388bfd"/></svg>`;
+      }
+      if (comp.type === 'polarizer') {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="#8e7cc3" stroke-width="2"><rect x="9" y="3" width="6" height="18" rx="1.5" fill="rgba(124,98,168,0.25)"/><line x1="4" y1="12" x2="20" y2="12" stroke-dasharray="2 2"/></svg>`;
       }
       if (comp.type === 'beam-splitter') {
         return `<svg viewBox="0 0 24 24" fill="none" stroke="#5a86a8" stroke-width="2"><rect x="4" y="4" width="16" height="16"/><line x1="4" y1="4" x2="20" y2="20"/></svg>`;
@@ -727,8 +775,10 @@
         'laser': 'Laser Source',
         'white-led': 'White LED Source',
         'rgb-led': 'RGB LED Source',
+        'point-source': 'Point Light Source',
         'convex-lens': 'Convex Lens',
         'concave-lens': 'Concave Lens',
+        'glass-sphere': 'Ball Lens / Sphere',
         'plane-mirror': 'Plane Mirror',
         'concave-mirror': 'Concave Mirror',
         'convex-mirror': 'Convex Mirror',
@@ -738,14 +788,20 @@
         'optical-detector': 'Optical Detector',
         'optical-filter': 'Optical Filter',
         'color-filter': 'Optical Filter',
+        'aperture-slit': 'Aperture / Slit',
+        'beam-blocker': 'Beam Blocker',
+        'diffraction-grating': 'Diffraction Grating',
+        'polarizer': 'Linear Polarizer',
       };
 
       const categoryTags = {
         'laser': 'MONOCHROMATIC SOURCE',
         'white-led': 'BROADBAND EMITTER',
         'rgb-led': 'TRICHROMATIC EMITTER',
+        'point-source': 'RADIAL POINT EMITTER',
         'convex-lens': 'CONVERGING OPTIC',
         'concave-lens': 'DIVERGING OPTIC',
+        'glass-sphere': 'SPHERICAL DIELECTRIC',
         'plane-mirror': 'SPECULAR REFLECTOR',
         'concave-mirror': 'CONVERGING MIRROR',
         'convex-mirror': 'DIVERGING MIRROR',
@@ -755,6 +811,10 @@
         'optical-detector': 'PHOTODIODE SENSOR',
         'optical-filter': 'SPECTRAL BANDPASS',
         'color-filter': 'SPECTRAL BANDPASS',
+        'aperture-slit': 'SPATIAL APERTURE',
+        'beam-blocker': 'OPTICAL BEAM DUMP',
+        'diffraction-grating': 'DIFFRACTIVE OPTIC',
+        'polarizer': 'DICHROIC POLARIZER',
       };
 
       const angleVal = normAngle(comp.rotation);
@@ -767,11 +827,18 @@
           <div class="prop-title-wrap">
             <div class="prop-icon-box" id="prop-icon-box">${this._getComponentIconSvg(comp)}</div>
             <div class="prop-title-meta">
-              <span class="prop-category-tag">${categoryTags[comp.type] || 'OPTICAL ELEMENT'} · #${comp.id}</span>
+              <span class="prop-category-tag">${i18n.phrase(categoryTags[comp.type] || 'OPTICAL ELEMENT')} · #${comp.id}</span>
               <h3 id="prop-header-title">${typeNames[comp.type] || comp.type}</h3>
             </div>
           </div>
           <div class="prop-header-actions">
+            <button class="icon-action-btn" id="btn-info-comp" title="What does this component do?">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+              </svg>
+            </button>
             <button class="icon-action-btn ${comp.locked ? 'active' : ''}" id="btn-lock-comp" title="${comp.locked ? 'Unlock position' : 'Lock position'}">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -1518,7 +1585,7 @@
             <div class="optical-readout">
               <div class="readout-row">
                 <span>Incident Rays</span>
-                <span id="det-hits">${comp.hitCount} ray${comp.hitCount === 1 ? '' : 's'}</span>
+                <span id="det-hits">${i18n.t(comp.hitCount === 1 ? 'raysCount' : 'raysCountPlural', { n: comp.hitCount })}</span>
               </div>
               <div class="readout-row">
                 <span>Integrated Flux</span>
@@ -1552,6 +1619,362 @@
             </div>
           </div>
         `;
+      } else if (comp instanceof PointSource) {
+        const c = comp.color;
+        const intPct = Math.round(comp.intensity * 100);
+        html += `
+          <div class="prop-section">
+            <div class="prop-section-header">
+              <h4>Point Emitter Output</h4>
+              <span class="prop-badge-pill" id="ps-badge-pill">${comp.whiteLight ? 'Broadband' : comp.wavelength + ' nm'}</span>
+            </div>
+
+            <div class="segmented-control">
+              <button class="seg-btn ${comp.whiteLight ? 'active' : ''}" data-ps-mode="white">White Light</button>
+              <button class="seg-btn ${!comp.whiteLight ? 'active' : ''}" data-ps-mode="mono">Monochromatic</button>
+            </div>
+
+            ${
+              !comp.whiteLight
+                ? `
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-ps-wl">Wavelength (λ)</label>
+                <span class="color-swatch" id="ps-wl-swatch" style="background:${rgbStr(c)}"></span>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-ps-wl" class="spectrum-slider" value="${comp.wavelength}" min="380" max="780" step="1">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-ps-wl-num" value="${comp.wavelength}" min="380" max="780" step="1">
+                  <span class="input-unit">nm</span>
+                </div>
+              </div>
+            </div>
+                `
+                : ''
+            }
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-ps-spread-range">Emission Cone Angle</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-ps-spread-range" value="${comp.spreadAngle}" min="15" max="360" step="5">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-ps-spread" value="${comp.spreadAngle}" min="15" max="360" step="5">
+                  <span class="input-unit">°</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="quick-angles">
+              <button class="qa-btn ps-spread-btn" data-spread="60">60°</button>
+              <button class="qa-btn ps-spread-btn" data-spread="120">120°</button>
+              <button class="qa-btn ps-spread-btn" data-spread="180">180°</button>
+              <button class="qa-btn ps-spread-btn" data-spread="360">360°</button>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-ps-rays-range">Ray Density</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-ps-rays-range" value="${comp.numRays}" min="4" max="72" step="2">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-ps-rays" value="${comp.numRays}" min="4" max="72" step="1">
+                  <span class="input-unit">rays</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-ps-int">Radiant Intensity</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-ps-int" value="${intPct}" min="5" max="100" step="5">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-ps-int-num" value="${intPct}" min="5" max="100" step="5">
+                  <span class="input-unit">%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (comp instanceof GlassSphere) {
+        const critAngle = deg(Math.asin(1 / comp.refractiveIndex)).toFixed(1);
+        const efl = comp.effectiveFocalLength.toFixed(1);
+        const bfl = comp.backFocalLength.toFixed(1);
+
+        html += `
+          <div class="prop-section">
+            <div class="prop-section-header">
+              <h4>Ball Lens / Dielectric Sphere</h4>
+              <span class="prop-badge-pill" id="gs-n-pill">n = ${comp.refractiveIndex.toFixed(2)}</span>
+            </div>
+
+            <div class="material-grid">
+              ${MATERIALS.map(
+                (m) => `
+                <div class="mat-card ${Math.abs(comp.refractiveIndex - m.n) < 0.015 ? 'active' : ''}" data-n="${m.n}" data-disp="${m.disp}">
+                  <span class="mat-name">${m.name}</span>
+                  <span class="mat-index">n=${m.n}</span>
+                </div>`
+              ).join('')}
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-gs-n">Refractive Index (n)</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-gs-n" value="${comp.refractiveIndex}" min="1.10" max="2.50" step="0.01">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-gs-n-num" value="${comp.refractiveIndex}" min="1.10" max="2.50" step="0.01">
+                </div>
+              </div>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-gs-disp">Chromatic Dispersion (Δn)</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-gs-disp" value="${comp.dispersion}" min="0" max="0.16" step="0.01">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-gs-disp-num" value="${comp.dispersion}" min="0" max="0.16" step="0.01">
+                </div>
+              </div>
+            </div>
+
+            <label class="prop-checkbox-row">
+              <input type="checkbox" id="prop-gs-split" ${comp.splitSpectrum ? 'checked' : ''}>
+              <span>Disperse Incoming Beam into Spectrum</span>
+            </label>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-gs-r-range">Sphere Radius (R)</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-gs-r-range" value="${comp.radius}" min="20" max="180" step="2">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-gs-r" value="${comp.radius}" min="20" max="180" step="2">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="optical-readout">
+              <div class="readout-row"><span>Effective Focal Length (EFL)</span><span id="gs-efl">${efl} px</span></div>
+              <div class="readout-row"><span>Back Focal Length (BFL)</span><span id="gs-bfl">${bfl} px</span></div>
+              <div class="readout-row"><span>TIR Critical Angle θc</span><span id="gs-crit">${critAngle}°</span></div>
+            </div>
+          </div>
+        `;
+      } else if (comp instanceof ApertureSlit) {
+        html += `
+          <div class="prop-section">
+            <div class="prop-section-header">
+              <h4>Aperture &amp; Slit Geometry</h4>
+              <span class="prop-badge-pill" id="slit-count-pill">${i18n.t(comp.slitCount === 1 ? 'slitsCount' : 'slitsCountPlural', { n: comp.slitCount })}</span>
+            </div>
+
+            <div class="segmented-control">
+              <button class="seg-btn ${comp.slitCount === 1 ? 'active' : ''}" data-slit-count="1">Single Slit</button>
+              <button class="seg-btn ${comp.slitCount === 2 ? 'active' : ''}" data-slit-count="2">Double Slit</button>
+              <button class="seg-btn ${comp.slitCount === 3 ? 'active' : ''}" data-slit-count="3">Triple Slit</button>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-slit-w-range">Slit Opening Width</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-slit-w-range" value="${comp.slitWidth}" min="4" max="100" step="2">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-slit-w" value="${comp.slitWidth}" min="4" max="100" step="2">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+
+            ${
+              comp.slitCount > 1
+                ? `
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-slit-sp-range">Slit Center Spacing (d)</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-slit-sp-range" value="${comp.slitSpacing}" min="12" max="160" step="2">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-slit-sp" value="${comp.slitSpacing}" min="12" max="160" step="2">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+                `
+                : ''
+            }
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-slit-ap-range">Total Barrier Height</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-slit-ap-range" value="${comp.aperture}" min="60" max="400" step="10">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-slit-ap" value="${comp.aperture}" min="60" max="400" step="10">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (comp instanceof BeamBlocker) {
+        html += `
+          <div class="prop-section">
+            <div class="prop-section-header">
+              <h4>Optical Beam Dump</h4>
+              <span class="prop-badge-pill">100% Absorb</span>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-bb-ap-range">Baffle Height</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-bb-ap-range" value="${comp.aperture}" min="24" max="360" step="4">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-bb-ap" value="${comp.aperture}" min="24" max="360" step="4">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (comp instanceof DiffractionGrating) {
+        const dNm = Math.round(comp.grooveSpacingNm);
+        const sin1 = 532 / comp.grooveSpacingNm;
+        const theta1 = sin1 < 1 ? `${deg(Math.asin(sin1)).toFixed(1)}°` : 'Evanescent';
+
+        html += `
+          <div class="prop-section">
+            <div class="prop-section-header">
+              <h4>Diffraction Grating</h4>
+              <span class="prop-badge-pill" id="dg-lpmm-pill">${comp.linesPerMm} l/mm</span>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-dg-lpmm-range">Groove Density</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-dg-lpmm-range" value="${comp.linesPerMm}" min="100" max="1200" step="25">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-dg-lpmm" value="${comp.linesPerMm}" min="100" max="1200" step="25">
+                  <span class="input-unit">l/mm</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="quick-angles">
+              <button class="qa-btn dg-lpmm-btn" data-lpmm="300">300</button>
+              <button class="qa-btn dg-lpmm-btn" data-lpmm="500">500</button>
+              <button class="qa-btn dg-lpmm-btn" data-lpmm="800">800</button>
+              <button class="qa-btn dg-lpmm-btn" data-lpmm="1000">1000</button>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label>Max Diffraction Order (±m)</label>
+              </div>
+              <div class="segmented-control">
+                <button class="seg-btn ${comp.maxOrder === 1 ? 'active' : ''}" data-dg-order="1">±1</button>
+                <button class="seg-btn ${comp.maxOrder === 2 ? 'active' : ''}" data-dg-order="2">±2</button>
+                <button class="seg-btn ${comp.maxOrder === 3 ? 'active' : ''}" data-dg-order="3">±3</button>
+              </div>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-dg-ap-range">Grating Aperture</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-dg-ap-range" value="${comp.aperture}" min="40" max="320" step="5">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-dg-ap" value="${comp.aperture}" min="40" max="320" step="5">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="optical-readout">
+              <div class="readout-row"><span>Grating Pitch (d)</span><span id="dg-pitch">${dNm} nm</span></div>
+              <div class="readout-row"><span>1st Order (532 nm, θi=0°)</span><span id="dg-theta1">${theta1}</span></div>
+            </div>
+          </div>
+        `;
+      } else if (comp instanceof Polarizer) {
+        const axisLabel =
+          Math.abs(comp.polAngle - 0) < 1 || Math.abs(comp.polAngle - 180) < 1
+            ? 'Horizontal (H)'
+            : Math.abs(comp.polAngle - 90) < 1
+            ? 'Vertical (V)'
+            : Math.abs(comp.polAngle - 45) < 1
+            ? 'Diagonal (+45°)'
+            : Math.abs(comp.polAngle - 135) < 1
+            ? 'Anti-Diag (135°)'
+            : `${comp.polAngle.toFixed(0)}°`;
+
+        html += `
+          <div class="prop-section">
+            <div class="prop-section-header">
+              <h4>Linear Polarizer (Malus's Law)</h4>
+              <span class="prop-badge-pill" id="pol-angle-pill">${Math.round(comp.polAngle)}°</span>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-pol-angle-range">Transmission Axis (θ)</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-pol-angle-range" value="${comp.polAngle}" min="0" max="180" step="1">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-pol-angle" value="${comp.polAngle}" min="0" max="180" step="1">
+                  <span class="input-unit">°</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="quick-angles">
+              <button class="qa-btn pol-preset-btn" data-pol="0">0° H</button>
+              <button class="qa-btn pol-preset-btn" data-pol="45">45° D</button>
+              <button class="qa-btn pol-preset-btn" data-pol="90">90° V</button>
+              <button class="qa-btn pol-preset-btn" data-pol="135">135°</button>
+            </div>
+
+            <div class="param-block">
+              <div class="param-header">
+                <label for="prop-pol-ap-range">Filter Aperture</label>
+              </div>
+              <div class="param-track-row">
+                <input type="range" id="prop-pol-ap-range" value="${comp.aperture}" min="30" max="320" step="4">
+                <div class="input-unit-wrap">
+                  <input type="number" id="prop-pol-ap" value="${comp.aperture}" min="30" max="320" step="4">
+                  <span class="input-unit">px</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="optical-readout">
+              <div class="readout-row"><span>Axis Orientation</span><span id="pol-axis-label">${axisLabel}</span></div>
+              <div class="readout-row"><span>Unpolarized Transmission</span><span>50%</span></div>
+              <div class="readout-row"><span>Polarized Law</span><span>I = I₀ cos²(Δθ)</span></div>
+            </div>
+          </div>
+        `;
       }
 
       html += `
@@ -1576,6 +1999,7 @@
       `;
 
       this.contentEl.innerHTML = html;
+      i18n.translateSubtree(this.contentEl);
       this._bindEvents(comp);
     }
 
@@ -2132,9 +2556,305 @@
         bindInput('prop-det-ap', syncDetAp);
       }
 
+      // ── Point Source Bindings ──
+      if (comp instanceof PointSource) {
+        this.contentEl.querySelectorAll('[data-ps-mode]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            comp.whiteLight = btn.dataset.psMode === 'white';
+            app.markUnsaved();
+            app.recordHistory();
+            this._build(comp);
+            app.requestUpdate();
+          });
+        });
+
+        const syncPsWl = (val) => {
+          comp.setWavelength(parseFloat(val) || 589);
+          const rEl = document.getElementById('prop-ps-wl');
+          const nEl = document.getElementById('prop-ps-wl-num');
+          const sw = document.getElementById('ps-wl-swatch');
+          const pill = document.getElementById('ps-badge-pill');
+          const iconBox = document.getElementById('prop-icon-box');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.wavelength;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.wavelength;
+          if (sw) sw.style.background = rgbStr(comp.color);
+          if (pill) pill.textContent = `${comp.wavelength} nm`;
+          if (iconBox) iconBox.innerHTML = this._getComponentIconSvg(comp);
+        };
+        bindInput('prop-ps-wl', syncPsWl);
+        bindInput('prop-ps-wl-num', syncPsWl);
+
+        const syncPsSpread = (val) => {
+          comp.spreadAngle = clamp(parseFloat(val) || 360, 15, 360);
+          const rEl = document.getElementById('prop-ps-spread-range');
+          const nEl = document.getElementById('prop-ps-spread');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.spreadAngle;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.spreadAngle;
+        };
+        bindInput('prop-ps-spread-range', syncPsSpread);
+        bindInput('prop-ps-spread', syncPsSpread);
+
+        this.contentEl.querySelectorAll('.ps-spread-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            syncPsSpread(btn.dataset.spread);
+            app.markUnsaved();
+            app.recordHistory();
+            app.requestUpdate();
+          });
+        });
+
+        const syncPsRays = (val) => {
+          comp.numRays = clamp(parseInt(val, 10) || 24, 4, 72);
+          const rEl = document.getElementById('prop-ps-rays-range');
+          const nEl = document.getElementById('prop-ps-rays');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.numRays;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.numRays;
+        };
+        bindInput('prop-ps-rays-range', syncPsRays);
+        bindInput('prop-ps-rays', syncPsRays);
+
+        const syncPsInt = (val) => {
+          const pct = clamp(parseFloat(val) || 85, 5, 100);
+          comp.intensity = pct / 100;
+          const rEl = document.getElementById('prop-ps-int');
+          const nEl = document.getElementById('prop-ps-int-num');
+          if (rEl && document.activeElement !== rEl) rEl.value = pct;
+          if (nEl && document.activeElement !== nEl) nEl.value = pct;
+        };
+        bindInput('prop-ps-int', syncPsInt);
+        bindInput('prop-ps-int-num', syncPsInt);
+      }
+
+      // ── Glass Sphere Bindings ──
+      if (comp instanceof GlassSphere) {
+        const updateGsReadout = () => {
+          const pill = document.getElementById('gs-n-pill');
+          const efl = document.getElementById('gs-efl');
+          const bfl = document.getElementById('gs-bfl');
+          const crit = document.getElementById('gs-crit');
+          if (pill) pill.textContent = `n = ${comp.refractiveIndex.toFixed(2)}`;
+          if (efl) efl.textContent = `${comp.effectiveFocalLength.toFixed(1)} px`;
+          if (bfl) bfl.textContent = `${comp.backFocalLength.toFixed(1)} px`;
+          if (crit) crit.textContent = `${deg(Math.asin(1 / comp.refractiveIndex)).toFixed(1)}°`;
+        };
+
+        const syncGsN = (val) => {
+          comp.refractiveIndex = clamp(parseFloat(val) || 1.52, 1.1, 2.5);
+          const rEl = document.getElementById('prop-gs-n');
+          const nEl = document.getElementById('prop-gs-n-num');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.refractiveIndex;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.refractiveIndex;
+          updateGsReadout();
+        };
+        bindInput('prop-gs-n', syncGsN);
+        bindInput('prop-gs-n-num', syncGsN);
+
+        const syncGsDisp = (val) => {
+          comp.dispersion = clamp(parseFloat(val) || 0, 0, 0.16);
+          const rEl = document.getElementById('prop-gs-disp');
+          const nEl = document.getElementById('prop-gs-disp-num');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.dispersion;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.dispersion;
+        };
+        bindInput('prop-gs-disp', syncGsDisp);
+        bindInput('prop-gs-disp-num', syncGsDisp);
+        bindInput('prop-gs-split', (checked) => { comp.splitSpectrum = Boolean(checked); });
+
+        this.contentEl.querySelectorAll('.mat-card').forEach((card) => {
+          card.addEventListener('click', () => {
+            this.contentEl.querySelectorAll('.mat-card').forEach((c) => c.classList.remove('active'));
+            card.classList.add('active');
+            syncGsN(card.dataset.n);
+            syncGsDisp(card.dataset.disp);
+            app.markUnsaved();
+            app.recordHistory();
+            app.requestUpdate();
+          });
+        });
+
+        const syncGsR = (val) => {
+          comp.radius = clamp(parseFloat(val) || 52, 20, 180);
+          const rEl = document.getElementById('prop-gs-r-range');
+          const nEl = document.getElementById('prop-gs-r');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.radius;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.radius;
+          updateGsReadout();
+        };
+        bindInput('prop-gs-r-range', syncGsR);
+        bindInput('prop-gs-r', syncGsR);
+      }
+
+      // ── Aperture / Slit Bindings ──
+      if (comp instanceof ApertureSlit) {
+        this.contentEl.querySelectorAll('[data-slit-count]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            comp.slitCount = clamp(parseInt(btn.dataset.slitCount, 10) || 2, 1, 3);
+            app.markUnsaved();
+            app.recordHistory();
+            this._build(comp);
+            app.requestUpdate();
+          });
+        });
+
+        const syncSlitW = (val) => {
+          comp.slitWidth = clamp(parseFloat(val) || 16, 4, 100);
+          const rEl = document.getElementById('prop-slit-w-range');
+          const nEl = document.getElementById('prop-slit-w');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.slitWidth;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.slitWidth;
+        };
+        bindInput('prop-slit-w-range', syncSlitW);
+        bindInput('prop-slit-w', syncSlitW);
+
+        const syncSlitSp = (val) => {
+          comp.slitSpacing = clamp(parseFloat(val) || 44, 12, 160);
+          const rEl = document.getElementById('prop-slit-sp-range');
+          const nEl = document.getElementById('prop-slit-sp');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.slitSpacing;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.slitSpacing;
+        };
+        bindInput('prop-slit-sp-range', syncSlitSp);
+        bindInput('prop-slit-sp', syncSlitSp);
+
+        const syncSlitAp = (val) => {
+          comp.aperture = clamp(parseFloat(val) || 160, 60, 400);
+          const rEl = document.getElementById('prop-slit-ap-range');
+          const nEl = document.getElementById('prop-slit-ap');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.aperture;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.aperture;
+        };
+        bindInput('prop-slit-ap-range', syncSlitAp);
+        bindInput('prop-slit-ap', syncSlitAp);
+      }
+
+      // ── Beam Blocker Bindings ──
+      if (comp instanceof BeamBlocker) {
+        const syncBbAp = (val) => {
+          comp.aperture = clamp(parseFloat(val) || 100, 24, 360);
+          const rEl = document.getElementById('prop-bb-ap-range');
+          const nEl = document.getElementById('prop-bb-ap');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.aperture;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.aperture;
+        };
+        bindInput('prop-bb-ap-range', syncBbAp);
+        bindInput('prop-bb-ap', syncBbAp);
+      }
+
+      // ── Diffraction Grating Bindings ──
+      if (comp instanceof DiffractionGrating) {
+        const updateDgReadout = () => {
+          const pill = document.getElementById('dg-lpmm-pill');
+          const pitch = document.getElementById('dg-pitch');
+          const th1 = document.getElementById('dg-theta1');
+          const dNm = comp.grooveSpacingNm;
+          const sin1 = 532 / dNm;
+          if (pill) pill.textContent = `${comp.linesPerMm} l/mm`;
+          if (pitch) pitch.textContent = `${Math.round(dNm)} nm`;
+          if (th1) th1.textContent = sin1 < 1 ? `${deg(Math.asin(sin1)).toFixed(1)}°` : i18n.phrase('Evanescent');
+        };
+
+        const syncDgLpmm = (val) => {
+          comp.linesPerMm = clamp(parseFloat(val) || 500, 100, 1200);
+          const rEl = document.getElementById('prop-dg-lpmm-range');
+          const nEl = document.getElementById('prop-dg-lpmm');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.linesPerMm;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.linesPerMm;
+          updateDgReadout();
+        };
+        bindInput('prop-dg-lpmm-range', syncDgLpmm);
+        bindInput('prop-dg-lpmm', syncDgLpmm);
+
+        this.contentEl.querySelectorAll('.dg-lpmm-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            syncDgLpmm(btn.dataset.lpmm);
+            app.markUnsaved();
+            app.recordHistory();
+            app.requestUpdate();
+          });
+        });
+
+        this.contentEl.querySelectorAll('[data-dg-order]').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            comp.maxOrder = clamp(parseInt(btn.dataset.dgOrder, 10) || 2, 1, 3);
+            this.contentEl.querySelectorAll('[data-dg-order]').forEach((b) => b.classList.remove('active'));
+            btn.classList.add('active');
+            app.markUnsaved();
+            app.recordHistory();
+            app.requestUpdate();
+          });
+        });
+
+        const syncDgAp = (val) => {
+          comp.aperture = clamp(parseFloat(val) || 110, 40, 320);
+          const rEl = document.getElementById('prop-dg-ap-range');
+          const nEl = document.getElementById('prop-dg-ap');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.aperture;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.aperture;
+        };
+        bindInput('prop-dg-ap-range', syncDgAp);
+        bindInput('prop-dg-ap', syncDgAp);
+      }
+
+      // ── Linear Polarizer Bindings ──
+      if (comp instanceof Polarizer) {
+        const updatePolReadout = () => {
+          const pill = document.getElementById('pol-angle-pill');
+          const lbl = document.getElementById('pol-axis-label');
+          if (pill) pill.textContent = `${Math.round(comp.polAngle)}°`;
+          if (lbl) {
+            lbl.textContent = i18n.phrase(
+              Math.abs(comp.polAngle - 0) < 1 || Math.abs(comp.polAngle - 180) < 1
+                ? 'Horizontal (H)'
+                : Math.abs(comp.polAngle - 90) < 1
+                ? 'Vertical (V)'
+                : Math.abs(comp.polAngle - 45) < 1
+                ? 'Diagonal (+45°)'
+                : Math.abs(comp.polAngle - 135) < 1
+                ? 'Anti-Diag (135°)'
+                : `${comp.polAngle.toFixed(0)}°`
+            );
+          }
+        };
+
+        const syncPolAngle = (val) => {
+          comp.setPolAngle(parseFloat(val) || 0);
+          const rEl = document.getElementById('prop-pol-angle-range');
+          const nEl = document.getElementById('prop-pol-angle');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.polAngle;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.polAngle;
+          updatePolReadout();
+        };
+        bindInput('prop-pol-angle-range', syncPolAngle);
+        bindInput('prop-pol-angle', syncPolAngle);
+
+        this.contentEl.querySelectorAll('.pol-preset-btn').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            syncPolAngle(btn.dataset.pol);
+            app.markUnsaved();
+            app.recordHistory();
+            app.requestUpdate();
+          });
+        });
+
+        const syncPolAp = (val) => {
+          comp.aperture = clamp(parseFloat(val) || 104, 30, 320);
+          const rEl = document.getElementById('prop-pol-ap-range');
+          const nEl = document.getElementById('prop-pol-ap');
+          if (rEl && document.activeElement !== rEl) rEl.value = comp.aperture;
+          if (nEl && document.activeElement !== nEl) nEl.value = comp.aperture;
+        };
+        bindInput('prop-pol-ap-range', syncPolAp);
+        bindInput('prop-pol-ap', syncPolAp);
+      }
+
       const delBtn = document.getElementById('btn-del-comp');
       if (delBtn) {
         delBtn.addEventListener('click', () => app.deleteComponent(comp.id));
+      }
+
+      const infoBtn = document.getElementById('btn-info-comp');
+      if (infoBtn) {
+        infoBtn.addEventListener('click', () => app.openComponentInfo(comp.type));
       }
     }
   }
@@ -2181,12 +2901,51 @@
         }
       } catch (_e) {}
 
+      this.lang = 'en';
+      try {
+        const storedLang = localStorage.getItem('optilab-lang');
+        if (storedLang === 'en' || storedLang === 'sk') {
+          this.lang = storedLang;
+        }
+      } catch (_e) {}
+
       this._centerViewport();
       this._bindEvents();
       this.setTheme(this.theme);
+      this.setLanguage(this.lang, true);
       this._initProjectState();
       this._startAutoSaveLoop();
       this._loop();
+    }
+
+    setLanguage(lang, silent = false) {
+      this.lang = i18n.setLang(lang);
+      try {
+        localStorage.setItem('optilab-lang', this.lang);
+      } catch (_e) {}
+
+      i18n.applyStaticDOM();
+      this._setSaveStatus(this.isSaved);
+
+      // Force right PropertiesPanel to rebuild in the newly selected language
+      this.propsPanel._currentId = '__REBUILD__';
+      this._syncSelectionUI();
+
+      // Re-render Component Info modal if currently open
+      const compInfoModal = document.getElementById('modal-comp-info');
+      if (compInfoModal && compInfoModal.style.display !== 'none' && this._activeInfoType) {
+        this.openComponentInfo(this._activeInfoType);
+      }
+
+      // Re-render Projects Manager modal if currently open
+      const projModal = document.getElementById('modal-projects');
+      if (projModal && projModal.style.display !== 'none') {
+        this.openProjectsModal();
+      }
+
+      if (!silent) {
+        this.showToast(i18n.t('toastLangSwitched'));
+      }
     }
 
     setTheme(theme) {
@@ -2210,8 +2969,32 @@
     }
 
     async _initProjectState() {
+      const validPresets = new Set([
+        'converging',
+        'diverging',
+        'keplerian',
+        'galilean',
+        'interferometer',
+        'prism-dispersion',
+        'diffraction-grating',
+        'polarizer-malus',
+        'ball-lens',
+        'pinhole-slit',
+      ]);
+      let requestedPreset = null;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const p = params.get('preset');
+        if (p && validPresets.has(p)) requestedPreset = p;
+      } catch (_e) {}
+
       try {
         await this.storage.init();
+        if (requestedPreset) {
+          this.loadPreset(requestedPreset, false);
+          this._refreshProjectCountPill();
+          return;
+        }
         const lastId = await this.storage.getLastProjectId();
         if (lastId) {
           const saved = await this.storage.getProject(lastId);
@@ -2223,7 +3006,7 @@
       } catch (err) {
         // Fallback to default preset if IndexedDB is unavailable
       }
-      this.loadPreset('converging', false);
+      this.loadPreset(requestedPreset || 'converging', false);
       await this.saveCurrentProject(true);
     }
 
@@ -2280,7 +3063,7 @@
         badge.classList.toggle('unsaved', !this.isSaved);
       }
       if (text) {
-        text.textContent = this.isSaved ? 'Saved' : 'Unsaved';
+        text.textContent = i18n.phrase(this.isSaved ? 'Saved' : 'Unsaved');
       }
     }
 
@@ -2354,6 +3137,55 @@
         if (onConfirm) onConfirm();
       };
       cancelBtn.onclick = () => cleanup();
+    }
+
+    openComponentInfo(type) {
+      const info = i18n.getComponentInfo(type);
+      const modal = document.getElementById('modal-comp-info');
+      if (!info || !modal) return;
+
+      this._activeInfoType = type;
+
+      const iconEl = document.getElementById('comp-info-icon');
+      const catEl = document.getElementById('comp-info-category');
+      const titleEl = document.getElementById('comp-info-title');
+      const bodyEl = document.getElementById('comp-info-body');
+
+      if (iconEl) {
+        try {
+          const dummy = createComponent(type, 0, 0);
+          iconEl.innerHTML = this.propsPanel._getComponentIconSvg(dummy);
+        } catch (_e) {
+          iconEl.innerHTML = '';
+        }
+      }
+      if (catEl) catEl.textContent = info.category;
+      if (titleEl) titleEl.textContent = info.title;
+      if (bodyEl) {
+        const controlsHtml = (info.controls || [])
+          .map(([label, desc]) => `<li><strong>${label}:</strong> ${desc}</li>`)
+          .join('');
+        bodyEl.innerHTML = `
+          <p class="comp-info-summary">${info.summary}</p>
+
+          <div class="comp-info-block">
+            <span class="comp-info-label">${i18n.phrase('Physics & Governing Law')}</span>
+            ${info.formula ? `<div class="comp-info-formula">${info.formula}</div>` : ''}
+            <p class="comp-info-physics-text">${info.physics}</p>
+          </div>
+
+          <div class="comp-info-block">
+            <span class="comp-info-label">${i18n.phrase('Key Controls')}</span>
+            <ul class="comp-info-list">${controlsHtml}</ul>
+          </div>
+
+          <div class="comp-info-tip">
+            <strong>${i18n.phrase('Try on the bench:')}</strong> ${info.tip}
+          </div>
+        `;
+      }
+
+      modal.style.display = 'flex';
     }
 
     async saveCurrentProject(silent = false) {
@@ -2445,22 +3277,34 @@
         this.projectId
       );
       const jsonStr = JSON.stringify(optpObj, null, 2);
+      const safeSlug =
+        this.projectName
+          .toLowerCase()
+          .replace(/[^a-z0-9-_]+/g, '-')
+          .replace(/^-|-$/g, '') || 'optilab-project';
+      const fileName = `${safeSlug}.optp`;
+
+      // Use native OS Save dialog when running inside OptiLab Electron Desktop
+      if (typeof window !== 'undefined' && window.optiLabDesktop && typeof window.optiLabDesktop.saveOptpFile === 'function') {
+        window.optiLabDesktop.saveOptpFile(fileName, jsonStr).then((res) => {
+          if (res && !res.canceled) {
+            this.showToast(i18n.t('toastExported', { file: res.fileName || fileName }), 'success');
+          }
+        });
+        return optpObj;
+      }
+
       if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && typeof document !== 'undefined') {
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        const safeSlug =
-          this.projectName
-            .toLowerCase()
-            .replace(/[^a-z0-9-_]+/g, '-')
-            .replace(/^-|-$/g, '') || 'optilab-project';
         a.href = url;
-        a.download = `${safeSlug}.optp`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        this.showToast(`Exported "${a.download}"`, 'success');
+        this.showToast(i18n.t('toastExported', { file: a.download }), 'success');
       }
       return optpObj;
     }
@@ -2507,13 +3351,13 @@
         this.recordHistory();
         await this.saveCurrentProject(true);
         this.requestUpdate();
-        this.showToast(`Imported "${this.projectName}" (${this.components.length} components)`, 'success');
+        this.showToast(i18n.t('toastImported', { name: this.projectName, n: this.components.length }), 'success');
       };
 
       if (!skipConfirm && this.components.length > 0 && !this.isSaved) {
         this.showConfirm(
-          'Import .optp Project',
-          `Import "${parsed.name}"? Your current project "${this.projectName}" will be auto-saved first.`,
+          i18n.t('confirmImportTitle'),
+          i18n.t('confirmImportMsg', { name: parsed.name, current: this.projectName }),
           applyImport
         );
       } else {
@@ -2524,14 +3368,14 @@
 
     _formatRelativeTime(ts) {
       const diffSec = Math.max(0, Math.floor((Date.now() - (Number(ts) || Date.now())) / 1000));
-      if (diffSec < 15) return 'Just now';
-      if (diffSec < 60) return `${diffSec}s ago`;
+      if (diffSec < 15) return i18n.t('justNow');
+      if (diffSec < 60) return i18n.t('secAgo', { n: diffSec });
       const diffMin = Math.floor(diffSec / 60);
-      if (diffMin < 60) return `${diffMin}m ago`;
+      if (diffMin < 60) return i18n.t('minAgo', { n: diffMin });
       const diffHr = Math.floor(diffMin / 60);
-      if (diffHr < 24) return `${diffHr}h ago`;
+      if (diffHr < 24) return i18n.t('hrAgo', { n: diffHr });
       const diffDays = Math.floor(diffHr / 24);
-      return `${diffDays}d ago`;
+      return i18n.t('dayAgo', { n: diffDays });
     }
 
     async openProjectsModal() {
@@ -2548,8 +3392,8 @@
 
       const totalChip = document.getElementById('modal-proj-total-chip');
       const compsChip = document.getElementById('modal-proj-comps-chip');
-      if (totalChip) totalChip.textContent = `${list.length} Project${list.length === 1 ? '' : 's'}`;
-      if (compsChip) compsChip.textContent = `${totalComps} Component${totalComps === 1 ? '' : 's'}`;
+      if (totalChip) totalChip.textContent = i18n.t(list.length === 1 ? 'projectsCount' : 'projectsCountPlural', { n: list.length });
+      if (compsChip) compsChip.textContent = i18n.t(totalComps === 1 ? 'componentsCount' : 'componentsCountPlural', { n: totalComps });
 
       const searchInput = document.getElementById('project-search-input');
       const query = searchInput ? searchInput.value.trim().toLowerCase() : '';
@@ -2563,7 +3407,7 @@
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
               <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
             </svg>
-            <div>${query ? `No saved projects matching "${query}"` : 'No saved projects in browser storage yet.'}</div>
+            <div>${query ? i18n.t('noProjectsMatching', { q: query }) : i18n.phrase('No saved projects in browser storage yet.')}</div>
           </div>`;
       } else {
         container.innerHTML = filtered
@@ -2609,7 +3453,7 @@
                         <polyline points="2 17 12 22 22 17"></polyline>
                         <polyline points="2 12 12 17 22 12"></polyline>
                       </svg>
-                      ${count} component${count === 1 ? '' : 's'}
+                      ${i18n.t(count === 1 ? 'componentsCount' : 'componentsCountPlural', { n: count }).toLowerCase()}
                     </span>
                     <span class="proj-meta-sep">•</span>
                     <span class="proj-meta-chip" title="${dateObj.toLocaleString()}">
@@ -2646,6 +3490,8 @@
           .join('');
       }
 
+      i18n.translateSubtree(container);
+
       container.querySelectorAll('.proj-open-btn').forEach((btn) => {
         btn.addEventListener('click', async () => {
           const rec = await this.storage.getProject(btn.dataset.id);
@@ -2653,7 +3499,7 @@
             await this.storage.setLastProjectId(rec.id);
             this._applyLoadedProjectRecord(rec);
             modal.style.display = 'none';
-            this.showToast(`Opened "${rec.name}"`, 'success');
+            this.showToast(i18n.t('toastOpenedProj', { name: rec.name }), 'success');
           }
         });
       });
@@ -2872,6 +3718,57 @@
         prism.splitSpectrum = true;
         this.components.push(led, prism);
         this.selectComponent(led);
+      } else if (name === 'diffraction-grating') {
+        const led = createComponent('white-led', -260, 0);
+        led.numRays = 1;
+        led.spreadAngle = 0;
+        const grating = createComponent('diffraction-grating', -60, 0);
+        grating.linesPerMm = 600;
+        grating.maxOrder = 2;
+        this.components.push(led, grating);
+        this.selectComponent(grating);
+      } else if (name === 'polarizer-malus') {
+        const laser = createComponent('laser', -300, 0);
+        laser.setWavelength(532);
+        laser.numRays = 5;
+        laser.beamWidth = 40;
+        const p1 = createComponent('polarizer', -140, 0);
+        p1.setPolAngle(0);
+        const p2 = createComponent('polarizer', -20, 0);
+        p2.setPolAngle(45);
+        const p3 = createComponent('polarizer', 100, 0);
+        p3.setPolAngle(90);
+        const det = createComponent('optical-detector', 240, 0);
+        this.components.push(laser, p1, p2, p3, det);
+        this.selectComponent(p2);
+      } else if (name === 'ball-lens') {
+        const led = createComponent('white-led', -260, 0);
+        led.numRays = 7;
+        led.beamWidth = 76;
+        led.spreadAngle = 0;
+        const sphere = createComponent('glass-sphere', -20, 0);
+        sphere.radius = 60;
+        sphere.refractiveIndex = 1.52;
+        sphere.dispersion = 0.06;
+        sphere.splitSpectrum = true;
+        this.components.push(led, sphere);
+        this.selectComponent(sphere);
+      } else if (name === 'pinhole-slit') {
+        const src = createComponent('point-source', -240, 0);
+        src.numRays = 36;
+        src.spreadAngle = 140;
+        const slit = createComponent('aperture-slit', -60, 0);
+        slit.slitCount = 2;
+        slit.slitWidth = 18;
+        slit.slitSpacing = 54;
+        slit.aperture = 200;
+        const lens = createComponent('convex-lens', 100, 0);
+        lens.focalLength = 140;
+        lens.aperture = 160;
+        const det = createComponent('optical-detector', 260, 0);
+        det.aperture = 120;
+        this.components.push(src, slit, lens, det);
+        this.selectComponent(slit);
       }
 
       if (recordUndo) {
@@ -2915,7 +3812,7 @@
         mtb.style.display = selectedComps.length > 1 ? 'flex' : 'none';
       }
       if (mtbCount) {
-        mtbCount.textContent = `${selectedComps.length} selected`;
+        mtbCount.textContent = i18n.t('selectedCount', { n: selectedComps.length });
       }
 
       const statusSel = document.getElementById('status-selected');
@@ -3217,10 +4114,14 @@
         const hw = comp.bodyW / 2 + pad;
         const hh = Math.max(comp.bodyH, comp.numRays > 1 ? comp.beamWidth : comp.bodyH) / 2 + pad;
         return Math.abs(local.x) <= hw && Math.abs(local.y) <= hh;
+      } else if (comp instanceof PointSource) {
+        return V.len(local) <= comp.radius + pad + 4;
       } else if (comp instanceof Lens) {
         const hw = Math.max(comp.thickness, 18) / 2 + pad + 6;
         const hh = comp.aperture / 2 + pad;
         return Math.abs(local.x) <= hw && Math.abs(local.y) <= hh;
+      } else if (comp instanceof GlassSphere) {
+        return V.len(local) <= comp.radius + pad;
       } else if (comp instanceof PlaneMirror) {
         const hw = comp.thickness + pad + 4;
         const hh = comp.aperture / 2 + pad;
@@ -3233,7 +4134,13 @@
         const hw = sagitta + comp.thickness + pad + 10;
         const hh = ap / 2 + pad;
         return Math.abs(local.x) <= hw && Math.abs(local.y) <= hh;
-      } else if (comp instanceof ColorFilter) {
+      } else if (
+        comp instanceof ColorFilter ||
+        comp instanceof ApertureSlit ||
+        comp instanceof BeamBlocker ||
+        comp instanceof DiffractionGrating ||
+        comp instanceof Polarizer
+      ) {
         const hw = comp.thickness / 2 + pad + 6;
         const hh = comp.aperture / 2 + pad;
         return Math.abs(local.x) <= hw && Math.abs(local.y) <= hh;
@@ -3262,11 +4169,19 @@
       if (comp instanceof Laser) {
         const boxH = Math.max(comp.bodyH, comp.numRays > 1 ? comp.beamWidth : comp.bodyH);
         return V.create(0, -boxH / 2 - CFG.ROTATION_HANDLE_DIST);
+      } else if (comp instanceof PointSource) {
+        return V.create(0, -(comp.radius + 8) - CFG.ROTATION_HANDLE_DIST);
+      } else if (comp instanceof GlassSphere) {
+        return V.create(0, -comp.radius - CFG.ROTATION_HANDLE_DIST);
       } else if (
         comp instanceof Lens ||
         comp instanceof PlaneMirror ||
         comp instanceof CurvedMirror ||
-        comp instanceof ColorFilter
+        comp instanceof ColorFilter ||
+        comp instanceof ApertureSlit ||
+        comp instanceof BeamBlocker ||
+        comp instanceof DiffractionGrating ||
+        comp instanceof Polarizer
       ) {
         return V.create(0, -comp.aperture / 2 - CFG.ROTATION_HANDLE_DIST);
       } else if (comp instanceof BeamSplitter) {
@@ -3311,7 +4226,20 @@
       });
 
       document.querySelectorAll('.component-card').forEach((card) => {
+        const infoBtn = card.querySelector('.cc-info-btn');
+        if (infoBtn) {
+          infoBtn.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+          });
+          infoBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.openComponentInfo(card.dataset.type);
+          });
+        }
+
         card.addEventListener('pointerdown', (e) => {
+          if (e.target && e.target.closest('.cc-info-btn')) return;
           e.preventDefault();
           const type = card.dataset.type;
           this._dragFromSidebar = {
@@ -3324,6 +4252,39 @@
           this.canvas.style.cursor = 'copy';
         });
       });
+
+      const modalCompInfo = document.getElementById('modal-comp-info');
+      const btnCloseCompInfo = document.getElementById('btn-close-comp-info');
+      const btnCloseCompInfoFooter = document.getElementById('btn-comp-info-close-footer');
+      const btnAddCompInfo = document.getElementById('btn-comp-info-add');
+      const closeCompInfo = () => {
+        if (modalCompInfo) modalCompInfo.style.display = 'none';
+      };
+      if (modalCompInfo) {
+        modalCompInfo.addEventListener('click', (e) => {
+          if (e.target === modalCompInfo) closeCompInfo();
+        });
+      }
+      if (btnCloseCompInfo) btnCloseCompInfo.addEventListener('click', closeCompInfo);
+      if (btnCloseCompInfoFooter) btnCloseCompInfoFooter.addEventListener('click', closeCompInfo);
+      if (btnAddCompInfo) {
+        btnAddCompInfo.addEventListener('click', () => {
+          const type = this._activeInfoType;
+          if (!type) return;
+          const center = this.snapWorld(
+            this.screenToWorld(this.renderer.width / 2, this.renderer.height / 2)
+          );
+          const comp = createComponent(type, center.x, center.y);
+          this.components.push(comp);
+          this.selectComponent(comp);
+          this.recordHistory();
+          this.markUnsaved();
+          this.requestUpdate();
+          closeCompInfo();
+          const info = i18n.getComponentInfo(type);
+          this.showToast(i18n.t('toastAddedToBench', { name: info ? info.title : type }));
+        });
+      }
 
       const nameInput = document.getElementById('project-name-input');
       if (nameInput) {
@@ -3454,9 +4415,18 @@
       if (btnTheme) {
         btnTheme.addEventListener('click', () => {
           this.setTheme(this.theme === 'dark' ? 'light' : 'dark');
-          this.showToast(`Switched to ${this.theme === 'dark' ? 'Notion Dark' : 'Notion Light'} theme`);
+          this.showToast(i18n.t(this.theme === 'dark' ? 'toastThemeDark' : 'toastThemeLight'));
         });
       }
+
+      document.querySelectorAll('.lang-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const nextLang = btn.dataset.lang;
+          if (nextLang && nextLang !== this.lang) {
+            this.setLanguage(nextLang, false);
+          }
+        });
+      });
 
       // Floating Multi-Selection Toolbar bindings
       const bindMtb = (id, fn) => {
@@ -3547,6 +4517,32 @@
         this.renderer.resize();
         this.requestUpdate();
       });
+
+      // Optional Electron Desktop IPC integration (no-op in browser)
+      if (typeof window !== 'undefined' && window.optiLabDesktop && window.optiLabDesktop.isDesktop) {
+        window.optiLabDesktop.onMenuAction(({ action, payload }) => {
+          if (action === 'new-project') this.createNewProject();
+          else if (action === 'open-projects') this.openProjectsModal();
+          else if (action === 'save-project') this.saveCurrentProject(false);
+          else if (action === 'export-optp') this.exportOptpFile();
+          else if (action === 'undo') this.undo();
+          else if (action === 'redo') this.redo();
+          else if (action === 'load-preset' && payload) this.loadPreset(payload, true);
+          else if (action === 'toggle-theme') {
+            this.setTheme(this.theme === 'dark' ? 'light' : 'dark');
+            this.showToast(i18n.t(this.theme === 'dark' ? 'toastThemeDark' : 'toastThemeLight'));
+          } else if (action === 'set-lang' && payload) {
+            this.setLanguage(payload, false);
+          } else if (action === 'open-shortcuts') {
+            const modalShortcuts = document.getElementById('modal-shortcuts');
+            if (modalShortcuts) modalShortcuts.style.display = 'flex';
+          }
+        });
+
+        window.optiLabDesktop.onOpenOptpContent(({ content }) => {
+          if (content) this.importOptpString(content, false);
+        });
+      }
     }
 
     _getCanvasPos(e) {
@@ -3916,7 +4912,7 @@
 
       // 5. Escape: close modals or clear selection
       if (e.key === 'Escape') {
-        const modals = ['modal-projects', 'modal-shortcuts', 'modal-confirm'];
+        const modals = ['modal-comp-info', 'modal-projects', 'modal-shortcuts', 'modal-confirm'];
         for (const mid of modals) {
           const m = document.getElementById(mid);
           if (m && m.style.display !== 'none') {
