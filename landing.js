@@ -143,9 +143,17 @@
       } catch (_e) {}
 
       this._bindUI();
+      this._syncVersionBadges();
       this.setTheme(this.theme);
       this.setLang(this.lang);
       this.renderAllCanvases();
+    }
+
+    _syncVersionBadges() {
+      const ver = (global.OptiLab && global.OptiLab.VERSION) || '1.0.0';
+      document.querySelectorAll('[data-optilab-version]').forEach((el) => {
+        el.textContent = `v${ver}`;
+      });
     }
 
     setTheme(theme) {

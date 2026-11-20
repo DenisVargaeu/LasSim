@@ -4,6 +4,11 @@
   "version": "1.0.0",
   "description": "OptiLab — Interactive 2D Geometric Optics Simulation Desktop App",
   "main": "main.js",
+  "homepage": "https://denisvarga.eu/fyz",
+  "author": {
+    "name": "Denis Varga",
+    "email": "mail@denisvarga.eu"
+  },
   "private": true,
   "scripts": {
     "start": "electron .",
@@ -14,8 +19,8 @@
     "build:mac": "electron-builder --mac"
   },
   "devDependencies": {
-    "electron": "^35.0.0",
-    "electron-builder": "^25.1.8"
+    "electron": "^45.4.1",
+    "electron-builder": "^26.18.0"
   },
   "build": {
     "appId": "sk.optilab.desktop",
@@ -35,6 +40,8 @@
         "from": "..",
         "to": "web",
         "filter": [
+          "version.js",
+          "version.json",
           "app.html",
           "index.html",
           "optics.js",
@@ -81,3 +88,4 @@
     }
   }
 }
+

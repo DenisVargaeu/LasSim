@@ -26,6 +26,8 @@ EXCLUDED = {
     "node_modules",
     "AGENTS.md",
     "README.md",
+    "CHANGELOG.md",
+    "bump_version.py",
 }
 
 def upload_folder(ftp, local_dir, remote_dir):

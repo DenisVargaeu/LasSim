@@ -35,7 +35,19 @@
     RayTracer,
     Renderer,
     I18N,
+    VERSION,
+    VERSION_INFO,
   } = global.OptiLab;
+
+  const APP_VERSION = VERSION || '1.0.0';
+  const APP_VERSION_INFO = VERSION_INFO || {
+    name: 'OptiLab',
+    version: APP_VERSION,
+    channel: 'stable',
+    releaseDate: '',
+    optpFormatVersion: 1,
+    changelog: [],
+  };
 
   const i18n = I18N || {
     getLang: () => 'en',
@@ -2943,6 +2955,12 @@
         this.openProjectsModal();
       }
 
+      // Re-render Version modal if currently open
+      const verModal = document.getElementById('modal-version');
+      if (verModal && verModal.style.display !== 'none') {
+        this.openVersionModal();
+      }
+
       if (!silent) {
         this.showToast(i18n.t('toastLangSwitched'));
       }
@@ -3184,6 +3202,61 @@
           </div>
         `;
       }
+
+      modal.style.display = 'flex';
+    }
+
+    openVersionModal() {
+      const modal = document.getElementById('modal-version');
+      const titleEl = document.getElementById('version-modal-title');
+      const bodyEl = document.getElementById('version-modal-body');
+      if (!modal || !bodyEl) return;
+
+      const lang = i18n.getLang();
+      const info = APP_VERSION_INFO;
+      if (titleEl) {
+        titleEl.textContent = `${i18n.phrase('About OptiLab')} v${info.version}`;
+      }
+
+      const releasesHtml = (info.changelog || [])
+        .map((rel) => {
+          const notes = (rel.notes && (rel.notes[lang] || rel.notes.en)) || [];
+          const items = notes.map((n) => `<li>${n}</li>`).join('');
+          return `
+            <div class="version-release-card">
+              <div class="version-release-head">
+                <span class="version-release-tag">v${rel.version}</span>
+                <span class="version-release-date">${rel.date || ''}</span>
+              </div>
+              <ul class="comp-info-list">${items}</ul>
+            </div>
+          `;
+        })
+        .join('');
+
+      bodyEl.innerHTML = `
+        <div class="version-meta-grid">
+          <div class="version-meta-card">
+            <span class="comp-info-label">${i18n.phrase('Current Version')}</span>
+            <span class="version-meta-val">v${info.version}</span>
+          </div>
+          <div class="version-meta-card">
+            <span class="comp-info-label">${i18n.phrase('Release Date')}</span>
+            <span class="version-meta-val">${info.releaseDate || '—'}</span>
+          </div>
+          <div class="version-meta-card">
+            <span class="comp-info-label">${i18n.phrase('Release Channel')}</span>
+            <span class="version-meta-val">${i18n.phrase(info.channel || 'stable')}</span>
+          </div>
+          <div class="version-meta-card">
+            <span class="comp-info-label">${i18n.phrase('Project Format')}</span>
+            <span class="version-meta-val">OPTP v${info.optpFormatVersion || 1}</span>
+          </div>
+        </div>
+
+        <span class="comp-info-label" style="margin-top:4px">${i18n.phrase('Release History')}</span>
+        ${releasesHtml}
+      `;
 
       modal.style.display = 'flex';
     }
@@ -4411,6 +4484,32 @@
         btnCloseShortcuts.addEventListener('click', () => { modalShortcuts.style.display = 'none'; });
       }
 
+      // Version badges & Changelog modal
+      const verLabel = `v${APP_VERSION}`;
+      const btnVersion = document.getElementById('btn-version');
+      const statusVersion = document.getElementById('status-version');
+      const modalVersion = document.getElementById('modal-version');
+      const btnCloseVersion = document.getElementById('btn-close-version');
+      const btnCloseVersionFooter = document.getElementById('btn-close-version-footer');
+      const closeVersion = () => {
+        if (modalVersion) modalVersion.style.display = 'none';
+      };
+      if (btnVersion) {
+        btnVersion.textContent = verLabel;
+        btnVersion.addEventListener('click', () => this.openVersionModal());
+      }
+      if (statusVersion) {
+        statusVersion.textContent = verLabel;
+        statusVersion.addEventListener('click', () => this.openVersionModal());
+      }
+      if (modalVersion) {
+        modalVersion.addEventListener('click', (e) => {
+          if (e.target === modalVersion) closeVersion();
+        });
+      }
+      if (btnCloseVersion) btnCloseVersion.addEventListener('click', closeVersion);
+      if (btnCloseVersionFooter) btnCloseVersionFooter.addEventListener('click', closeVersion);
+
       const btnTheme = document.getElementById('btn-theme');
       if (btnTheme) {
         btnTheme.addEventListener('click', () => {
@@ -4536,6 +4635,8 @@
           } else if (action === 'open-shortcuts') {
             const modalShortcuts = document.getElementById('modal-shortcuts');
             if (modalShortcuts) modalShortcuts.style.display = 'flex';
+          } else if (action === 'open-version') {
+            this.openVersionModal();
           }
         });
 
@@ -4912,7 +5013,7 @@
 
       // 5. Escape: close modals or clear selection
       if (e.key === 'Escape') {
-        const modals = ['modal-comp-info', 'modal-projects', 'modal-shortcuts', 'modal-confirm'];
+        const modals = ['modal-version', 'modal-comp-info', 'modal-projects', 'modal-shortcuts', 'modal-confirm'];
         for (const mid of modals) {
           const m = document.getElementById(mid);
           if (m && m.style.display !== 'none') {

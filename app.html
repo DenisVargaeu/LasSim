@@ -20,6 +20,7 @@
           </div>
           <span class="brand-title">OptiLab</span>
         </a>
+        <button type="button" class="brand-version-pill" id="btn-version" title="Version &amp; Changelog">v1.0.0</button>
 
         <div class="project-bar">
           <button class="tb-btn proj-trigger-btn" id="btn-projects" title="Open Saved Projects Manager (Ctrl+N for New Project)">
@@ -569,6 +570,7 @@
       <div class="status-group">
         <div class="status-item">Storage: <span>IndexedDB · OPTP v1</span></div>
         <div class="status-item">Engine: <span>2D Geometric Optics &amp; Snell Ray Tracer</span></div>
+        <div class="status-item"><span class="status-version" id="status-version" title="Version &amp; Changelog">v1.0.0</span></div>
       </div>
     </footer>
 
@@ -779,10 +781,39 @@
       </div>
     </div>
 
+    <!-- Version & Changelog Modal -->
+    <div class="modal-backdrop" id="modal-version" style="display:none">
+      <div class="modal-card modal-md">
+        <div class="modal-header">
+          <div class="modal-header-left">
+            <div class="modal-icon-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="4"></circle>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+              </svg>
+            </div>
+            <div>
+              <span class="prop-category-tag">VERSION &amp; CHANGELOG</span>
+              <h3 id="version-modal-title">About OptiLab</h3>
+            </div>
+          </div>
+          <button class="icon-action-btn" id="btn-close-version" title="Close (Esc)">✕</button>
+        </div>
+        <div class="modal-body" id="version-modal-body"></div>
+        <div class="modal-footer">
+          <div class="modal-footer-hint">
+            <span>SemVer · <code>version.json</code></span>
+          </div>
+          <button class="tb-btn" id="btn-close-version-footer">Close</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>
   </div>
 
+  <script src="version.js"></script>
   <script src="optics.js"></script>
   <script src="renderer.js"></script>
   <script src="i18n.js"></script>

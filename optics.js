@@ -1014,10 +1014,12 @@
   }
 
   function buildOptpObject(projectName, components, settings = {}, projectId = null) {
+    const appVersion = (global.OptiLab && global.OptiLab.VERSION) || '1.0.0';
     return {
       format: 'OPTP',
       version: 1,
       application: 'OptiLab',
+      appVersion,
       exportedAt: new Date().toISOString(),
       project: {
         id: projectId || 'proj_' + Date.now(),

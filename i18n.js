@@ -165,6 +165,14 @@
     'Physics & Governing Law': 'Fyzika a fyzikálny zákon',
     'Key Controls': 'Kľúčové nastavenia',
     'Try on the bench:': 'Vyskúšaj na lavici:',
+    'VERSION & CHANGELOG': 'VERZIA A HISTÓRIA ZMIEN',
+    'About OptiLab': 'O aplikácii OptiLab',
+    'Current Version': 'Aktuálna verzia',
+    'Release Date': 'Dátum vydania',
+    'Release Channel': 'Kanál vydania',
+    'Project Format': 'Formát projektu',
+    'Release History': 'História vydaní',
+    'stable': 'stabilná',
 
     // Properties Panel: Overview & Multi-Select
     'Select an optical component on the bench to inspect or adjust its parameters.': 'Vyber optický prvok na pracovnej ploche pre zobrazenie alebo úpravu jeho parametrov.',

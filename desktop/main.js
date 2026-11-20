@@ -181,6 +181,11 @@ function buildAppMenu() {
           accelerator: 'Shift+/',
           click: () => sendMenuAction('open-shortcuts'),
         },
+        { type: 'separator' },
+        {
+          label: `About OptiLab (v${app.getVersion()})`,
+          click: () => sendMenuAction('open-version'),
+        },
       ],
     },
   ];
